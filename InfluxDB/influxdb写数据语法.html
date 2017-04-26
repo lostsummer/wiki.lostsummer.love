@@ -1,0 +1,232 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <link rel="Stylesheet" type="text/css" href="/static/css/typo.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/reset_typo.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/tango.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+        <title>InfluxDB 写数据语法 - Wiki of Lostsummer</title>
+        <meta name="keywords" content="c, python, go, docker, influxdb"/>
+        <meta name="description" content="My Personal wiki."/>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body>
+        <div id="container" class="typo">
+            
+    <div id="header">
+        <div id="post-nav">
+            
+            <a href="/">Home</a> » <a href="/#InfluxDB">InfluxDB</a> » InfluxDB 写数据语法
+            
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    <div id="content">
+        <p>本篇是官方文档的一个蹩脚翻译，原文：<a href="https://docs.influxdata.com/influxdb/v0.13/write_protocols/write_syntax/">Write Syntax</a></p>
+<p>语法总是容易忘记，这里是一个参考手册</p>
+<div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#line-protocol">行协议 ( Line Protocol )</a><ul>
+<li><a href="#_1">空格</a></li>
+<li><a href="#timestamp">Timestamp （时间戳）</a></li>
+<li><a href="#key-value">键值（key-value）分隔符</a></li>
+<li><a href="#_2">转义字符</a></li>
+<li><a href="#_3">注释</a></li>
+<li><a href="#_4">数据类型</a></li>
+<li><a href="#_5">例子</a><ul>
+<li><a href="#measurement-field">最简单的合法写入点  (measurement + field)</a></li>
+<li><a href="#timestamp_1">带 timestamp 的</a></li>
+<li><a href="#tag">带 tag 的</a></li>
+<li><a href="#tag_1">带 tag 时间戳</a></li>
+<li><a href="#field">多个 field</a></li>
+<li><a href="#_6">转义逗号和空格</a></li>
+<li><a href="#_7">转义等号</a></li>
+<li><a href="#tag-value">tag value 中有斜线</a></li>
+<li><a href="#field-key">转义 field key</a></li>
+<li><a href="#_8">一个例子展现所有转义和引用规则</a></li>
+</ul>
+</li>
+<li><a href="#_9">警告</a></li>
+</ul>
+</li>
+<li><a href="#cli">CLI</a><ul>
+<li><a href="#cli_1">使用 CLI 写入一个数据点</a></li>
+</ul>
+</li>
+<li><a href="#http">HTTP</a><ul>
+<li><a href="#_10">写入操作的查询字串参数</a></li>
+<li><a href="#curl">使用 curl 写入一个数据点</a></li>
+<li><a href="#retention-policy">使用非默认 Retention Policy 写入一个数据点</a></li>
+<li><a href="#_11">写入一个需要鉴权的数据点</a></li>
+<li><a href="#_12">指定非纳秒级时间戳</a></li>
+<li><a href="#curl_1">使用 curl 批量写入多个数据点</a></li>
+<li><a href="#_13">警告</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h1 id="line-protocol">行协议 ( Line Protocol )</h1>
+<p>行协议的语法是：</p>
+<div class="hlcode"><pre><span class="n">measurement</span><span class="p">[,</span><span class="n">tag_key1</span><span class="o">=</span><span class="n">tag_value1</span><span class="p">...]</span> <span class="n">field_key</span><span class="o">=</span><span class="n">field_value</span><span class="p">[,</span><span class="n">field_key2</span><span class="o">=</span><span class="n">field_value2</span><span class="p">]</span> <span class="p">[</span><span class="n">timestamp</span><span class="p">]</span>
+</pre></div>
+
+
+<p>例如：</p>
+<div class="hlcode"><pre><span class="n">measurement</span><span class="p">,</span><span class="n">tkey1</span><span class="o">=</span><span class="n">tval1</span><span class="p">,</span><span class="n">tkey2</span><span class="o">=</span><span class="n">tval2</span> <span class="n">fkey</span><span class="o">=</span><span class="n">fval</span><span class="p">,</span><span class="n">fkey2</span><span class="o">=</span><span class="n">fval2</span> <span class="mi">1234567890000000000</span>
+</pre></div>
+
+
+<h2 id="_1">空格</h2>
+<p>measurement 和 filed(s) 之间 必需用空格分隔，如果有 tag(s) ， tag 和 field 间必需空格分隔。measurement 和 tag，tag 和 tag 之间必行用一个逗号分隔，并且之间不能有空格。如果有 timestamp，field 和 timestamp 之间也必需用空格分隔。</p>
+<p>合法的例子  ( value 和 otherval 是 field, foo 和 bat 是 tag )</p>
+<div class="hlcode"><pre><span class="n">measurement</span> <span class="n">value</span><span class="o">=</span><span class="mi">12</span>
+<span class="n">measurement</span> <span class="n">value</span><span class="o">=</span><span class="mi">12</span> <span class="mi">1439587925</span>
+<span class="n">measurement</span><span class="p">,</span><span class="n">foo</span><span class="o">=</span><span class="n">bar</span> <span class="n">value</span><span class="o">=</span><span class="mi">12</span>
+<span class="n">measurement</span><span class="p">,</span><span class="n">foo</span><span class="o">=</span><span class="n">bar</span> <span class="n">value</span><span class="o">=</span><span class="mi">12</span> <span class="mi">1439587925</span>
+<span class="n">measurement</span><span class="p">,</span><span class="n">foo</span><span class="o">=</span><span class="n">bar</span><span class="p">,</span><span class="n">bat</span><span class="o">=</span><span class="n">baz</span> <span class="n">value</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span><span class="n">otherval</span><span class="o">=</span><span class="mi">21</span> <span class="mi">1439587925</span>
+</pre></div>
+
+
+<p>不合法的</p>
+<div class="hlcode"><pre><span class="n">measurement</span><span class="p">,</span><span class="n">value</span><span class="o">=</span><span class="mi">12</span>
+<span class="n">measurement</span> <span class="n">value</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span><span class="mi">1439587925</span>
+<span class="n">measurement</span> <span class="n">foo</span><span class="o">=</span><span class="n">bar</span> <span class="n">value</span><span class="o">=</span><span class="mi">12</span>
+<span class="n">measurement</span><span class="p">,</span><span class="n">foo</span><span class="o">=</span><span class="n">bar</span><span class="p">,</span><span class="n">value</span><span class="o">=</span><span class="mi">12</span> <span class="mi">1439587925</span>
+<span class="n">measurement</span><span class="p">,</span><span class="n">foo</span><span class="o">=</span><span class="n">bar</span>
+<span class="n">measurement</span><span class="p">,</span><span class="n">foo</span><span class="o">=</span><span class="n">bar</span> <span class="mi">1439587925</span>
+</pre></div>
+
+
+<h2 id="timestamp">Timestamp （时间戳）</h2>
+<p>Timestamp 不是必需。 如果没有写 timestamp，服务器在插入数据点时会写入当时的系统本地时间。如果写 timestamp，timestamp 必需和 field 之间以空格分隔。Timestamp 默认是纳秒为单位的 Unix 时间。也可以指定其他精度，参加 HTTP 语法的细节。我们建议尽可能使用最小的精度，因为这样可以显著地提高压缩率。</p>
+<h2 id="key-value">键值（key-value）分隔符</h2>
+<p>Tag 或 field 的键、值之间必需用 “=” 分隔</p>
+<h2 id="_2">转义字符</h2>
+<p>如果一个 tag 的键或值，或者一个 field 的键包含空格，逗号，等号，必需使用反斜线转义。反斜线不必转义。在 measurement 中， 逗号和空格也需要转义，而等号不需要。</p>
+<h2 id="_3">注释</h2>
+<p>以 # 为首的行是合法的注释行。</p>
+<h2 id="_4">数据类型</h2>
+<p>Measurements, tag key, tag value 以及 field key 在数据库中总是以 string 保存。string 值得最大限制是 64 KB。所有的 Unicode 字符必须合法，并且逗号和空格需要转义。反斜线不需要转义，但是不能直接用在逗号和空格之前 （注意 string 类型的 field value 有另一套不同于 measurement，tag 和 field key 的应用转义规则）。字段（Field） location="us-west" 存储了一个 string 值。 Field 值可以是 float64，int64，boolean 或 string。所有的后续 field 值必须和第一次写入measurement 的数据点的 field 值类型相同。float64 是默认的数字类型。1 是 一个 float 类型数，1i 是一个 integer 类型数。int64 类型数必行跟着一个 i。Field bikes_present=15i 存储一个 integer， field bikes_present=15 存储一个 float。布尔值是 t，T，true，True，TRUE，f，false，False，FALSE 字符串，赋值给 field value 必须被双引号包围。双引号包围的字符串必须被转义，其他部分的字符可以不转义。</p>
+<h2 id="_5">例子</h2>
+<h3 id="measurement-field">最简单的合法写入点  (measurement + field)</h3>
+<div class="hlcode"><pre><span class="n">disk_free</span> <span class="n">value</span><span class="o">=</span><span class="mi">442221834240</span><span class="n">i</span>
+</pre></div>
+
+
+<h3 id="timestamp_1">带 timestamp 的</h3>
+<div class="hlcode"><pre><span class="n">disk_free</span> <span class="n">value</span><span class="o">=</span><span class="mi">442221834240</span><span class="n">i</span> <span class="mi">1435362189575692182</span>
+</pre></div>
+
+
+<h3 id="tag">带 tag 的</h3>
+<div class="hlcode"><pre><span class="n">disk_free</span><span class="p">,</span><span class="n">hostname</span><span class="o">=</span><span class="n">server01</span><span class="p">,</span><span class="n">disk_type</span><span class="o">=</span><span class="n">SSD</span> <span class="n">value</span><span class="o">=</span><span class="mi">442221834240</span><span class="n">i</span>
+</pre></div>
+
+
+<h3 id="tag_1">带 tag 时间戳</h3>
+<div class="hlcode"><pre><span class="n">disk_free</span><span class="p">,</span><span class="n">hostname</span><span class="o">=</span><span class="n">server01</span><span class="p">,</span><span class="n">disk_type</span><span class="o">=</span><span class="n">SSD</span> <span class="n">value</span><span class="o">=</span><span class="mi">442221834240</span><span class="n">i</span> <span class="mi">1435362189575692182</span>
+</pre></div>
+
+
+<h3 id="field">多个 field</h3>
+<div class="hlcode"><pre><span class="n">disk_free</span> <span class="n">free_space</span><span class="o">=</span><span class="mi">442221834240</span><span class="n">i</span><span class="p">,</span><span class="n">disk_type</span><span class="o">=</span><span class="s">&quot;SSD&quot;</span> <span class="mi">1435362189575692182</span>
+</pre></div>
+
+
+<h3 id="_6">转义逗号和空格</h3>
+<div class="hlcode"><pre><span class="n">total</span><span class="err">\</span> <span class="n">disk</span><span class="err">\</span> <span class="n">free</span><span class="p">,</span><span class="n">volumes</span><span class="o">=/</span><span class="n">net</span><span class="err">\</span><span class="p">,</span><span class="o">/</span><span class="n">home</span><span class="err">\</span><span class="p">,</span><span class="o">/</span> <span class="n">value</span><span class="o">=</span><span class="mi">442221834240</span><span class="n">i</span> <span class="mi">1435362189575692182</span>
+</pre></div>
+
+
+<h3 id="_7">转义等号</h3>
+<div class="hlcode"><pre><span class="n">disk_free</span><span class="p">,</span><span class="n">a</span><span class="err">\</span><span class="o">=</span><span class="n">b</span><span class="o">=</span><span class="n">y</span><span class="err">\</span><span class="o">=</span><span class="n">z</span> <span class="n">value</span><span class="o">=</span><span class="mi">442221834240</span><span class="n">i</span>
+</pre></div>
+
+
+<h3 id="tag-value">tag value 中有斜线</h3>
+<div class="hlcode"><pre><span class="n">disk_free</span><span class="p">,</span><span class="n">path</span><span class="o">=</span><span class="n">C</span><span class="o">:</span><span class="err">\</span><span class="n">Windows</span> <span class="n">value</span><span class="o">=</span><span class="mi">442221834240</span><span class="n">i</span>
+</pre></div>
+
+
+<p>斜线用在字符串中不需要转义，除了后面跟着逗号，空格或等号</p>
+<h3 id="field-key">转义 field key</h3>
+<div class="hlcode"><pre><span class="n">disk_free</span> <span class="n">value</span><span class="o">=</span><span class="mi">442221834240</span><span class="n">i</span><span class="p">,</span><span class="n">working</span><span class="err">\</span> <span class="n">directories</span><span class="o">=</span><span class="s">&quot;C:\My Documents\Stuff for examples,C:\My Documents&quot;</span>
+</pre></div>
+
+
+<h3 id="_8">一个例子展现所有转义和引用规则</h3>
+<div class="hlcode"><pre><span class="s">&quot;measurement\ with\ quotes&quot;</span><span class="p">,</span><span class="n">tag</span><span class="err">\</span> <span class="n">key</span><span class="err">\</span> <span class="n">with</span><span class="err">\</span> <span class="n">spaces</span><span class="o">=</span><span class="n">tag</span><span class="err">\</span><span class="p">,</span><span class="n">value</span><span class="err">\</span><span class="p">,</span><span class="n">with</span><span class="s">&quot;commas&quot;</span> <span class="n">field_key</span><span class="err">\\\\</span><span class="o">=</span><span class="s">&quot;string field value, only </span><span class="se">\&quot;</span><span class="s"> need be quoted&quot;</span>
+</pre></div>
+
+
+<p>上面的例子， measurement 是“带引用的 measurement”，tag key 是带空格的 tag key，tag value 是带逗号的 tag value，field key 是 filed_key\\ ，filed value 是字符串 string field value，only " need be quoted 。</p>
+<h2 id="_9">警告</h2>
+<p>如果你批量写入数据点，并且所有的写入点没有显示的 timestamp，那么它们将被以相同的 timestamp 写入。因为一个数据点被 measurement，tag 集，timestamp 定义，所以这会导致数据点重复。当 InfluxDB 遇到重复数据点，field 会变成新旧 filed 集的 union，并且绑定到新的 fied 集。最佳实践是为所有写入点提供显示的 timestamp。 measurement，tag key，tag values 不用引用，空格和逗号必须转义。string 型的 field value 必须被双引号包围，只有索引号需要被转义。查询包好双引号的 measurement，tag 后比较困难，因为双引号在语法上也是一个标识符。在表达式遇到这些限制时，正确处理并不容易。避免使用标识符语法的关键词。InfluxDB 所有的值都是大小写敏感的： MyDB != mydb != MYDB。关键词例外，它们是大小写不敏感的。</p>
+<h1 id="cli">CLI</h1>
+<p>使用命令行接口写入数据点，使用 insert 命令</p>
+<h2 id="cli_1">使用 CLI 写入一个数据点</h2>
+<div class="hlcode"><pre><span class="o">&gt;</span> <span class="n">insert</span> <span class="n">disk_free</span><span class="p">,</span><span class="n">hostname</span><span class="o">=</span><span class="n">server01</span> <span class="n">value</span><span class="o">=</span><span class="mi">442221834240</span><span class="n">i</span> <span class="mi">1435362189575692182</span>
+</pre></div>
+
+
+<p>成功时命令行不返回任何信息，如果数据点不能写入后给出一些解析器错误信息。使用 CLI 从数据文件导入数据的方法参见 InfluxDB CLI/Shell 。</p>
+<h1 id="http">HTTP</h1>
+<p>写入数据点使用 HTTP，POST 到 8086 端口的 /write 端点。在查询字串中你必须使用 db=<target_database> 指定目标数据库。通过查询字串，你可以提供可选的 retention policy，指定任何你提供的任何 timestamp 的精度，通过任何必需的验证。成功的写入会返回 204 HTTP Stauts Code。语法错误会返回 400。</p>
+<h2 id="_10">写入操作的查询字串参数</h2>
+<p>使用 HTTP API 时，下面的字符串参数作为 GET 字串的一部分时也能通过</p>
+<ul>
+<li>db=&lt;database&gt; 必需 —— 设置写入的目标数据库</li>
+<li>rp=&lt;retention_policy&gt; —— 设置写入的目标 retension policy （如果不是用目前默认的 retention policy 的话）</li>
+<li>u=&lt;username&gt;, p=&lt;password&gt; —— 如果数据库打开了鉴权，必需验证用户的写权限</li>
+<li>precision=[n,u,ms,s,m,h] —— 设置写入Unix 时间的精度，如果不设置默认使用纳秒</li>
+</ul>
+<h2 id="curl">使用 curl 写入一个数据点</h2>
+<div class="hlcode"><pre><span class="n">curl</span> <span class="o">-</span><span class="n">X</span> <span class="n">POST</span> <span class="err">&#39;</span><span class="n">http</span><span class="o">:</span><span class="c1">//localhost:8086/write?db=mydb&#39; --data-binary &#39;disk_free,hostname=server01 value=442221834240i 1435362189575692182&#39;</span>
+</pre></div>
+
+
+<h2 id="retention-policy">使用非默认 Retention Policy 写入一个数据点</h2>
+<div class="hlcode"><pre><span class="n">curl</span> <span class="o">-</span><span class="n">X</span> <span class="n">POST</span> <span class="err">&#39;</span><span class="n">http</span><span class="o">:</span><span class="c1">//localhost:8086/write?db=mydb&amp;rp=six_month_rollup&#39; --data-binary &#39;disk_free,hostname=server01 value=442221834240i 1435362189575692182&#39;</span>
+</pre></div>
+
+
+<h2 id="_11">写入一个需要鉴权的数据点</h2>
+<div class="hlcode"><pre><span class="n">curl</span> <span class="o">-</span><span class="n">X</span> <span class="n">POST</span> <span class="err">&#39;</span><span class="n">http</span><span class="o">:</span><span class="c1">//localhost:8086/write?db=mydb&amp;u=root&amp;p=123456&#39; --data-binary &#39;disk_free,hostname=server01 value=442221834240i 1435362189575692182&#39;</span>
+</pre></div>
+
+
+<h2 id="_12">指定非纳秒级时间戳</h2>
+<ul>
+<li>n: 纳秒</li>
+<li>u: 微秒</li>
+<li>ms: 毫秒</li>
+<li>s: 秒</li>
+<li>m: 分</li>
+<li>h: 小时</li>
+</ul>
+<p>Example </p>
+<div class="hlcode"><pre><span class="n">curl</span> <span class="o">-</span><span class="n">X</span> <span class="n">POST</span> <span class="err">&#39;</span><span class="n">http</span><span class="o">:</span><span class="c1">//localhost:8086/write?db=mydb&amp;precision=ms&#39; --data-binary &#39;disk_free value=442221834240i 1435362189575&#39;</span>
+</pre></div>
+
+
+<h2 id="curl_1">使用 curl 批量写入多个数据点</h2>
+<p>你可以传入一个数据文件，只需要文件名前加 @ 符号。文件里可以包含多条数据，每条一行。数据必须以换行符 '\n' 分隔。我们建议一次批量的写入 5000 ~ 10000 条数据。少量的数据产生过多的 HTTP request，并不能达到最高效率。</p>
+<div class="hlcode"><pre><span class="nb">curl</span> <span class="na">-X</span> <span class="nx">POST</span> <span class="s1">&#39;http://localhost:8086/write?db=&lt;database&gt;&#39;</span> <span class="o">--</span><span class="kd">data</span><span class="na">-binary</span> <span class="p">@</span><span class="o">&lt;</span><span class="nb">filename</span><span class="o">&gt;</span>
+</pre></div>
+
+
+<h2 id="_13">警告</h2>
+<p>使用 curl 的 --data-binary 编码所有行协议（line protocal） 格式的 write 数据。使用 --data-binary 以外的方法写数据点可能会有一些问题。 -d， --data-urlencode，--data-ascii 可能都会截掉换行符或者用其他格式替换。</p>
+    </div>
+
+        </div>
+        <div id="footer">
+              <p>
+                Copyright © 2012-2017 Lostsummer.
+                Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+                Theme by <a href="https://github.com/tankywoo/yasimple" target="_blank">YASimple</a>.
+              </p>
+                <p>Last Update 2017-04-26 14:57:23</p>
+        </div>
+    </body>
+</html>

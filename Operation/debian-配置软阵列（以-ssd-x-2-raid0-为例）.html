@@ -1,0 +1,105 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <link rel="Stylesheet" type="text/css" href="/static/css/typo.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/reset_typo.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/tango.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+        <title>Debian 配置软阵列（以 SSD x 2 raid0 为例） - Wiki of Lostsummer</title>
+        <meta name="keywords" content="c, python, go, docker, influxdb"/>
+        <meta name="description" content="My Personal wiki."/>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body>
+        <div id="container" class="typo">
+            
+    <div id="header">
+        <div id="post-nav">
+            
+            <a href="/">Home</a> » <a href="/#Operation">Operation</a> » Debian 配置软阵列（以 SSD x 2 raid0 为例）
+            
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    <div id="content">
+        <h2 id="_1">准备</h2>
+<p><strong>1. 安装软阵列管理工具 mdadm</strong></p>
+<div class="hlcode"><pre><span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">install</span> <span class="n">mdadm</span>
+</pre></div>
+
+
+<p><strong>2. 给两块SSD 建立分区</strong></p>
+<div class="hlcode"><pre><span class="n">fdisk</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdb</span>
+<span class="n">fdisk</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdc</span>
+<span class="cp"># 具体交互略，全盘分配sdb1 和 sdc1，确保容量相同 ，不必格式化</span>
+</pre></div>
+
+
+<h2 id="_2">建立</h2>
+<div class="hlcode"><pre><span class="n">mdadm</span> <span class="o">-</span><span class="n">C</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">md0</span> <span class="o">-</span><span class="n">l</span> <span class="mi">0</span> <span class="o">-</span><span class="n">n</span> <span class="mi">2</span> <span class="o">-</span><span class="n">c</span> <span class="mi">128</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdb1</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdc1</span>
+<span class="cp"># 等同:  mdadm --create /dev/md0 --level=0 --raid-devices=2 --chunck=128 /dev/sdb1 /dev/sdc1</span>
+</pre></div>
+
+
+<h2 id="_3">开关</h2>
+<p><strong>1. 启用</strong></p>
+<div class="hlcode"><pre><span class="n">mdadm</span> <span class="o">-</span><span class="n">A</span> <span class="o">-</span><span class="n">s</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">md0</span>
+</pre></div>
+
+
+<p><strong>2. 停用</strong></p>
+<div class="hlcode"><pre><span class="n">mdadm</span> <span class="o">--</span><span class="n">stop</span> <span class="o">-</span><span class="n">s</span>
+</pre></div>
+
+
+<h2 id="_4">格式化</h2>
+<div class="hlcode"><pre><span class="n">mkfs</span> <span class="o">-</span><span class="n">t</span> <span class="n">ext4</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">md0</span>
+</pre></div>
+
+
+<h2 id="_5">运行状态查看</h2>
+<p>查看所有MD设备信息
+     # 直接查看 /proc/mdstat<br />
+     cat /proc/mdstat  </p>
+<p>查看指定MD设备详细运行信息</p>
+<div class="hlcode"><pre> <span class="n">mdadm</span> <span class="o">--</span><span class="n">detail</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">md0</span>
+</pre></div>
+
+
+<h2 id="_6">自动挂载配置</h2>
+<p>编辑 /etc/fstab ， 添加一行</p>
+<div class="hlcode"><pre><span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">md0</span>                <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">oracle</span><span class="o">/</span><span class="n">ssd</span>                <span class="k">auto</span>    <span class="n">defaults</span>        <span class="mi">0</span> <span class="mi">0</span>
+</pre></div>
+
+
+<h2 id="mdadm">mdadm  配置文件</h2>
+<p>mdadm 不采用 /etc/mdadm.conf 作为主要配置文件，它可以完全不依赖该文件而不会影响阵列的正常工作。
+  该配置文件的主要作用是方便跟踪软 RAID 的配置。对该配置文件进行配置是有好处的，但不是必须的。推荐对该文件进行配置。</p>
+<p>格式：</p>
+<div class="hlcode"><pre><span class="n">DEVICE</span>  <span class="err">参与阵列的设备</span>
+<span class="n">ARRAY</span>  <span class="err">阵列的描述</span>
+</pre></div>
+
+
+<p>通常可以这样来建立：</p>
+<div class="hlcode"><pre><span class="n">echo</span> <span class="n">DEVICE</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sd</span><span class="p">{</span><span class="n">b</span><span class="p">,</span><span class="n">c</span><span class="p">,</span><span class="n">d</span><span class="p">}</span><span class="mi">1</span> <span class="o">&gt;&gt;</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">mdadm</span><span class="p">.</span><span class="n">conf</span>
+<span class="n">mdadm</span> <span class="o">--</span><span class="n">detail</span> <span class="o">--</span><span class="n">scan</span> <span class="o">&gt;&gt;</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">mdadm</span><span class="p">.</span><span class="n">conf</span>
+</pre></div>
+
+
+<h2 id="_7">参考资料</h2>
+<p>http://www.ibm.com/developerworks/cn/linux/l-cn-raid/</p>
+    </div>
+
+        </div>
+        <div id="footer">
+              <p>
+                Copyright © 2012-2017 Lostsummer.
+                Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+                Theme by <a href="https://github.com/tankywoo/yasimple" target="_blank">YASimple</a>.
+              </p>
+                <p>Last Update 2017-04-26 14:57:23</p>
+        </div>
+    </body>
+</html>

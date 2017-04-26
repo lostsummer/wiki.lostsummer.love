@@ -1,0 +1,64 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <link rel="Stylesheet" type="text/css" href="/static/css/typo.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/reset_typo.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/tango.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+        <title>SQL Server 2008 和 Oracle 数据库审计功能对比概述 - Wiki of Lostsummer</title>
+        <meta name="keywords" content="c, python, go, docker, influxdb"/>
+        <meta name="description" content="My Personal wiki."/>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body>
+        <div id="container" class="typo">
+            
+    <div id="header">
+        <div id="post-nav">
+            
+            <a href="/">Home</a> » <a href="/#DBAudit">DBAudit</a> » SQL Server 2008 和 Oracle 数据库审计功能对比概述
+            
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    <div id="content">
+        <table>
+<thead>
+<tr>
+<th></th>
+<th align="left">SQL Server 2008</th>
+<th align="left">Oracle 11G</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>范围</td>
+<td align="left">服务器级别操作 <br> 数据库级别操作</td>
+<td align="left">服务器级别操作 <br> 数据库级别操作（包换审计表自审）</td>
+</tr>
+<tr>
+<td>最小粒度</td>
+<td align="left">服务器：特定权限用户特定类型操作（20个） <br> 数据库：特定权限用户对表的特定类型操作（15个）</td>
+<td align="left">服务器：特定用户的权限审计和特定类型的语句审计 <br> 数据库：特定用户特定类型操作到表的特定行列</td>
+</tr>
+<tr>
+<td>审计规则</td>
+<td align="left">系统内置35个操作组，包括数服务器级别，数据库级别（DDL，DML）</td>
+<td align="left">1. 系统内置的语句类型（41） <br> 2. 按访问的类型及访问对象的类型建立模式对象审计（14种操作类型）<br> 3. 细粒度审计可以建立策略，审计到对指定表，指定行列的操作和权限</td>
+</tr>
+</tbody>
+</table>
+    </div>
+
+        </div>
+        <div id="footer">
+              <p>
+                Copyright © 2012-2017 Lostsummer.
+                Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+                Theme by <a href="https://github.com/tankywoo/yasimple" target="_blank">YASimple</a>.
+              </p>
+                <p>Last Update 2017-04-26 14:57:23</p>
+        </div>
+    </body>
+</html>

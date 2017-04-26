@@ -1,0 +1,156 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <link rel="Stylesheet" type="text/css" href="/static/css/typo.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/reset_typo.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/tango.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+        <title>使用 CollectD + InfuxDB + Grafana 监控主机 - Wiki of Lostsummer</title>
+        <meta name="keywords" content="c, python, go, docker, influxdb"/>
+        <meta name="description" content="My Personal wiki."/>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body>
+        <div id="container" class="typo">
+            
+    <div id="header">
+        <div id="post-nav">
+            
+            <a href="/">Home</a> » <a href="/#InfluxDB">InfluxDB</a> » 使用 CollectD + InfuxDB + Grafana 监控主机
+            
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    <div id="content">
+        <p>原文： <a href="http://jansipke.nl/monitoring-hosts-with-collectd-influxdb-and-grafana/" title="原文地址">Monitoring hosts with CollectD, InfluxDB and Grafana</a></p>
+<p>本篇文章将介绍一种监控主机的解决方案 —— 在 CentOS 7 系统上搭建 CollectD, InfluxDB 和 Grafana 的组合。</p>
+<div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#collectd">安装配置 CollectD</a></li>
+<li><a href="#influxdb">安装配置 InfluxDB</a></li>
+<li><a href="#grafana">安装使用 Grafana</a></li>
+</ul>
+</div>
+<h1 id="collectd">安装配置 CollectD</h1>
+<p>使用 yum 安装</p>
+<div class="hlcode"><pre> <span class="n">yum</span> <span class="o">-</span><span class="n">y</span> <span class="n">install</span> <span class="n">epel</span><span class="o">-</span><span class="n">release</span>
+ <span class="n">yum</span> <span class="o">-</span><span class="n">y</span> <span class="n">install</span> <span class="n">collectd</span>
+</pre></div>
+
+
+<p>本篇写作之时，以上命令会在系统上安装 CollectD 5.5.0 版本，如果你使用老版本的 CentOS 系统，请确认安装的 Collectd 版本不是 4 及 4 以下版本。</p>
+<p>配置文件 /etc/collectd.conf (debian 8 上是 /etc/collectd/collectd.conf) 应配置以下内容：</p>
+<div class="hlcode"><pre><span class="nx">FQDNLookup</span>  <span class="kc">true</span>
+<span class="nx">BaseDir</span>     <span class="s2">&quot;/var/lib/collectd&quot;</span>
+<span class="nx">PIDFile</span>     <span class="s2">&quot;/var/run/collectd.pid&quot;</span>
+<span class="nx">PluginDir</span>   <span class="s2">&quot;/usr/lib64/collectd&quot;</span>
+<span class="nx">TypesDB</span>     <span class="s2">&quot;/usr/share/collectd/types.db&quot;</span>
+<span class="nx">LoadPlugin</span>  <span class="nx">syslog</span>
+<span class="nx">LoadPlugin</span>  <span class="nx">interface</span>
+<span class="nx">LoadPlugin</span>  <span class="nx">load</span>
+<span class="nx">LoadPlugin</span>  <span class="nx">network</span>
+<span class="o">&lt;</span><span class="nx">Plugin</span> <span class="nx">interface</span><span class="o">&gt;</span>
+<span class="nx">Interface</span> <span class="s2">&quot;eth0&quot;</span>
+<span class="nx">IgnoreSelected</span> <span class="kc">false</span>
+<span class="o">&lt;/</span><span class="nx">Plugin</span><span class="o">&gt;</span>
+<span class="o">&lt;</span><span class="nx">Plugin</span> <span class="nx">load</span><span class="o">&gt;</span>
+    <span class="nx">ReportRelative</span> <span class="kc">true</span>
+<span class="o">&lt;/</span><span class="nx">Plugin</span><span class="o">&gt;</span>
+<span class="o">&lt;</span><span class="nx">Plugin</span> <span class="nx">network</span><span class="o">&gt;</span>
+    <span class="nx">Server</span> <span class="s2">&quot;127.0.0.1&quot;</span> <span class="s2">&quot;25826&quot;</span>
+<span class="o">&lt;/</span><span class="nx">Plugin</span><span class="o">&gt;</span>
+</pre></div>
+
+
+<p>最关键的是 “network” plugin，这部分设定监控信息将要发送到 127.0.0.1 的 25826 端口。稍后我们将要指定 InfluxDB 监听此端口以接收 CollectD 的发包。</p>
+<p>现在启动这个守护程序，并且将它加入到开机自启动中。</p>
+<div class="hlcode"><pre><span class="n">systemctl</span> <span class="n">start</span> <span class="n">collectd</span><span class="p">.</span><span class="n">service</span>
+<span class="n">systemctl</span> <span class="n">enable</span> <span class="n">collectd</span><span class="p">.</span><span class="n">service</span>
+</pre></div>
+
+
+<h1 id="influxdb">安装配置 InfluxDB</h1>
+<p>可以这样安装 InfluxDB</p>
+<div class="hlcode"><pre><span class="n">yum</span> <span class="o">-</span><span class="n">y</span> <span class="n">install</span> <span class="n">http</span><span class="o">:</span><span class="c1">//influxdb.s3.amazonaws.com/influxdb-0.9.4.2-1.x86_64.rpm</span>
+</pre></div>
+
+
+<p>编辑 InfluxDB 的配置文件 /etc/opt/influxdb.conf，将 [collectd] 标签下的内容修改为：</p>
+<div class="hlcode"><pre><span class="k">[collectd]</span>
+    <span class="na">enabled</span> <span class="o">=</span> <span class="s">true</span>
+<span class="s">    bind-address = &quot;127.0.0.1:25826&quot;</span>
+<span class="s">    database = &quot;collectd&quot;</span>
+<span class="s">    typesdb = &quot;/usr/share/collectd/types.db&quot;</span>
+</pre></div>
+
+
+<p>启动守护程序 </p>
+<div class="hlcode"><pre><span class="n">systemctl</span> <span class="n">start</span> <span class="n">influxdb</span><span class="p">.</span><span class="n">service</span>
+</pre></div>
+
+
+<p>你可以验证下 InfluxDB 是否已经收到了 CollectD 发送的监控信息：</p>
+<div class="hlcode"><pre><span class="cp"># /opt/influxdb/influx</span>
+<span class="n">Connected</span> <span class="n">to</span> <span class="n">http</span><span class="o">:</span><span class="c1">//localhost:8086 version 0.9.4.2</span>
+<span class="n">InfluxDB</span> <span class="n">shell</span> <span class="mf">0.9.4.2</span>
+<span class="o">&gt;</span> <span class="n">use</span> <span class="n">collectd</span>
+<span class="n">Using</span> <span class="n">database</span> <span class="n">collectd</span>
+<span class="o">&gt;</span> <span class="n">show</span> <span class="n">measurements</span>
+<span class="nl">name:</span> <span class="n">measurements</span>
+<span class="o">------------------</span>
+<span class="n">name</span>
+<span class="n">interface_rx</span>
+<span class="n">interface_tx</span>
+<span class="n">load_longterm</span>
+<span class="n">load_midterm</span>
+<span class="n">load_shortterm</span>
+</pre></div>
+
+
+<h1 id="grafana">安装使用 Grafana</h1>
+<p>安装和启动</p>
+<div class="hlcode"><pre><span class="n">yum</span> <span class="o">-</span><span class="n">y</span> <span class="n">install</span> <span class="n">https</span><span class="o">:</span><span class="c1">//grafanarel.s3.amazonaws.com/builds/grafana-2.5.0-1.x86_64.rpm</span>
+<span class="n">systemctl</span> <span class="n">start</span> <span class="n">grafana</span><span class="o">-</span><span class="n">server</span><span class="p">.</span><span class="n">service</span>
+<span class="n">systemctl</span> <span class="n">enable</span> <span class="n">grafana</span><span class="o">-</span><span class="n">server</span><span class="p">.</span><span class="n">service</span>
+</pre></div>
+
+
+<p>打开浏览器： http://localhost:3000 使用用户名/密码 admin/admin 登录后看到页面</p>
+<p><img alt="gf1" src="http://jansipke.nl/wp-content/uploads/grafana1.png" /></p>
+<p>点击 Data Source 然后 Add new，填写如下配置项</p>
+<p><img alt="gf2" src="http://jansipke.nl/wp-content/uploads/grafana2.png" /></p>
+<p>InfluxDB 默认的用户名和密码都是 root，测试下连接 (Test the connection) 然后保存 (save)</p>
+<p>点击右上角图标，选择 Dashboards / New， </p>
+<p>New Dashboard 右边掩藏一个绿色小矩形， 鼠标移动上去，点击， 选择 Add Panel / Graph</p>
+<p><img alt="gf3" src="http://jansipke.nl/wp-content/uploads/grafana4.png" /></p>
+<p>点击 Graph 的标题， 选择点击 Edit， 选择 collectd 作为数据源 (data source)</p>
+<p><img alt="gf4" src="http://jansipke.nl/wp-content/uploads/grafana5.png" /></p>
+<p>编辑窗口里你可以改变 graph 的外观和数据。General 标签下，把标题改为 Load。在 Metrics 标签下，点击 "selecct measurements" 选择 "load_longterm"。 
+点击 "WHERE" 后的 "+"，选择 "host"，点击随后出现的 "select tag value"，选择你想要检测的主机名。最后把  "ALIAS BY" 的值改为 "Long" ：</p>
+<p><img alt="gf5" src="http://jansipke.nl/wp-content/uploads/grafana6.png" /></p>
+<p>点击 " + Query"  添加 mid term 和 short term load 的值。最后点击屏幕顶部的 save 按钮。graph 将呈现像下面这样：</p>
+<p><img alt="gf6" src="http://jansipke.nl/wp-content/uploads/grafana7.png" /></p>
+<p>我们再添加一个新的 graph 来显示网络速率。点击 "ADD ROW"，然后再次从绿色小矩形上选择 Add Panel / Graph。选择 collectd datasource. 这次我们不使用可视化查询编辑器。interface_rx 和 interface_tx 的统计数据是流经网络接口的总包数或总字节数，但我们需要的是速率，也就是单位时间的字节数。选择右边的三条水平线样式的按钮，选择 "Switch editor mode"：</p>
+<p><img alt="gf7" src="http://jansipke.nl/wp-content/uploads/grafana8.png" /></p>
+<p>输入框内填入如下查询语句：</p>
+<div class="hlcode"><pre><span class="n">SELECT</span> <span class="n">derivative</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">)</span> <span class="n">AS</span> <span class="s">&quot;value&quot;</span> <span class="n">FROM</span> <span class="s">&quot;interface_rx&quot;</span> <span class="n">WHERE</span> <span class="s">&quot;host&quot;</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">test</span><span class="err">&#39;</span> <span class="n">AND</span> <span class="s">&quot;type&quot;</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">if_octets</span><span class="err">&#39;</span> <span class="n">AND</span> <span class="s">&quot;instance&quot;</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">eth0</span><span class="err">&#39;</span>
+</pre></div>
+
+
+<p>test  是你的主机名，确保替换正确，确保单引号和双引号输入正确。在 "Axes &amp; Grid tab" 标签下，修改 Y 轴 ( Left Y ) 单位  ( unit ) 为 "bytes per second"：</p>
+<p><img alt="gf8" src="http://jansipke.nl/wp-content/uploads/grafana9.png" /></p>
+<p>点击 "+ Query" 添加 interface_tx 的查询，方法同上。为两个查询添加别名 ( Alias )： interface_rx : Received (接收), interface_tx : Transmitted (输送)。 graph 将变成类似下面的样子：</p>
+<p><img alt="gf9" src="http://jansipke.nl/wp-content/uploads/grafana10.png" /></p>
+    </div>
+
+        </div>
+        <div id="footer">
+              <p>
+                Copyright © 2012-2017 Lostsummer.
+                Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+                Theme by <a href="https://github.com/tankywoo/yasimple" target="_blank">YASimple</a>.
+              </p>
+                <p>Last Update 2017-04-26 14:57:23</p>
+        </div>
+    </body>
+</html>

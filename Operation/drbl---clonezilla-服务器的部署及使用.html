@@ -1,0 +1,171 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <link rel="Stylesheet" type="text/css" href="/static/css/typo.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/reset_typo.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/tango.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+        <title>DRBL - Clonezilla 服务器的部署及使用 - Wiki of Lostsummer</title>
+        <meta name="keywords" content="c, python, go, docker, influxdb"/>
+        <meta name="description" content="My Personal wiki."/>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body>
+        <div id="container" class="typo">
+            
+    <div id="header">
+        <div id="post-nav">
+            
+            <a href="/">Home</a> » <a href="/#Operation">Operation</a> » DRBL - Clonezilla 服务器的部署及使用
+            
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    <div id="content">
+        <h1 id="_1">简介</h1>
+<ul>
+<li>Clonezilla 的完整官方文档：http://drbl.nchc.org.tw/clonezilla/clonezilla-live/</li>
+<li>DRBL 的完整官方文档：http://drbl.nchc.org.tw/one4all/desktop/</li>
+</ul>
+<p>如果要全面了解 DRBL 和 Clonezillia，建议阅读官方文档。本文只对DRBL with Clonezilla 服务器版在公司的部署和使用做快速说明。</p>
+<h2 id="clonezilla">Clonezilla</h2>
+<p>简言之，Clonezillia 是一个磁盘数据的克隆工具，支持磁盘-磁盘，磁盘-镜像文件的克隆操作，既可以针对整个磁盘克隆操作，也可以针对磁盘分区操作。支持磁盘硬阵列（公司设备使用阵列卡）克隆，但不支持软阵列（包括主板配置阵列及操作系统实现）。如果大家有使用过主要支持windows 的磁盘克隆工具ghost ，就会知道这种磁盘数据的克隆速度是很快的，用来安装系统远比用安装盘快的多，并且系统内已经预安装了很多软件。这正好符合我们的生产需要，我们的硬件有固定的几种规格，不需要太担心驱动问题。通过磁盘克隆的方式，省却了每次都要安装Debian 系统，Oracle 数据库，Tomcat 服务，环境变量配置，软件安装等的麻烦，大大提高了生产效率。</p>
+<p>Clonezillia 本身是一个定制的 Linux 操作系统，live 版可以装在光盘，u盘或者硬盘里，用 Clonezilla 引导计算机启动可以对计算机的磁盘进行克隆操作。之前我们公司生产新设备的方式就是以“磁盘-磁盘”的方式为主，以一个生产好的磁盘做为克隆的母盘，另一个空磁盘（一般要和母盘同规格）做目标盘，借在同一个 PC 服务器上，这个服务器用 Clonzilla live U 盘引动启动做克隆。</p>
+<p>这种方式的不便在于：</p>
+<ol>
+<li>
+<p>要维护一个母盘，如果要维护多个版本的系统就需要维护多个母盘；</p>
+</li>
+<li>
+<p>一次只能生产一个磁盘； </p>
+</li>
+<li>
+<p>每次生产都要手工拆装服务器磁盘。</p>
+</li>
+</ol>
+<p>这些不便在使用了 Clonezillia 的服务器版后都得到了解决。</p>
+<p><strong>使用服务器版的 Clonezilla 生产/维护，基本两种操作：</strong></p>
+<ol>
+<li>
+<p>Clonezilla 服务器向接入网内网络启动的客户端推送无盘 Clonezilla 系统，客户端进入 Clonezilla 后使用“磁盘-文件”模式的 “save disk”可以把本机的磁盘备份成一个镜像文件，保存到服务器的 “/home/paritmag/" 目录下。这相当于过去“母盘”的制作，因为一个没有程序数据生成的母盘镜像大小不超过 10G ，这样在我们的大容量阵列存储（挂载在 /home/partimag/）能维护多个母盘版本。</p>
+</li>
+<li>
+<p>客户端在进入 Clonzilla 后选择 “磁盘-文件”模式的 “restore to disk”，可以选择服务器 “/home/partimag/”目录下的母盘镜像，克隆到本机的磁盘上（要满足本机磁盘容量 &gt;= 母盘容量）。这相当于过去“母盘-&gt;目标盘”的克隆过程，但不需要拆装磁盘，只是客户机和服务器的网络数据交互，可以同时生产多台设备。</p>
+</li>
+</ol>
+<p>通过 Clonezilla 服务器版，接入网络的虚拟机进行整盘备份和数据恢复/克隆都非常方便。</p>
+<p>Clonezilla 的服务器版和 DRBL 服务器绑在一起（来自同一个机构），所以关于部署，看 DRBL 的部署文档就可以。</p>
+<h2 id="drbl">DRBL</h2>
+<p>DRBL 是向网内客户机推送无盘操作系统的服务器，除了能推送 Clonezilla 外，还能推送其他多种 Linux， BSD发行版。公司内生产环境除了使用 DRBL 推送的 Clonezilla 外，还可以利用 DRBL 推送的 <strong>Debian 7</strong> 系统，比如：</p>
+<ol>
+<li>
+<p>设备的系统分区数据损坏，无法启动需要修复，靠网络引导进入 DRBL 的系统选择界面时，选择第一个 “Debian 7”（默认停留在第二个“Clonezillia”7秒无按键就进入Clonezilla），就进入了一个无盘版的 Debian 7 ， 基本工具都有，可以对磁盘数据进行修复，这省却了使用修复光盘；</p>
+</li>
+<li>
+<p>在完成“小容量母盘数据”-&gt;“大容量目标盘”的克隆后，有一部分分区表外的 free 磁盘空间，想要用起来是需要先fdisk 修改第三个分区的分区表再使用 resize2fs 扩展分区的，resize2fs 前需要先 umout 第三分区，因为数据库服务等需要，强行 umout 可能会有问题，这是 reboot 通过网络引导，进入 DRBL 的 Debian 再 resize2fs /dev/sda3 （一般会提示你先e2fsck -f，那就先执行之）更有效率。</p>
+</li>
+</ol>
+<h1 id="_2">安装</h1>
+<p>DRBL 服务可以安装在 Debian，Ubuntu，CentOs 等系统上，公司 DRBL 服务器 10.10.10.210 使用 Debian 7 ，安装比较简单。</p>
+<h2 id="_3">操作系统安装</h2>
+<p>使用 Debian 7 的 Live CD 或 Live USB 安装，安装过程注意以下几点：</p>
+<ul>
+<li>
+<p>公司用于 DRBL 服务器的设备上装有一个 300G 磁盘和三块磁盘组成的 Raid5 阵列。安装操作系统分区前注意按磁盘容量区分，sda 和 sdb 哪块是单盘，哪块是阵列，切记勿要把阵列格式化，里面保存了很多磁盘镜像，数据很重要。操作系统安装在 300 G 磁盘上，从简的话，只分一个swap和一个/ 就可以了。不必给 /home 分区，因为安装好系统后，我们要将 Raid5 阵列 mount 到 /home/partimag ， 而我们基本只使用 root 用户。</p>
+</li>
+<li>
+<p>安装系统时给 root 用户 设置公司常用口令。把 SSH 服务器选上，为了以后登录用，不要安装桌面环境，因为不需要，且安装了桌面后，网络配置会被 network manager 托管，每次启动都会自动修改网络配置，不适合作为服务器的需要。</p>
+</li>
+</ul>
+<h2 id="drbl_1">DRBL 安装</h2>
+<p>编辑 /etc/apt-get/source.list ，添加 DRBL 的 Wheezy （Debian 7.x）源：</p>
+<div class="hlcode"><pre><span class="k">deb</span> <span class="s">http://free.nchc.org.tw/debian/</span> <span class="kp">wheezy</span> <span class="kp">main</span>
+<span class="k">deb</span> <span class="s">http://free.nchc.org.tw/drbl-core</span> <span class="kp">drbl</span> <span class="kp">stable</span>
+</pre></div>
+
+
+<p>以后的安装过程也要更新 Debian 7 的软件包，为了下载更快，最好也添加 163 的 Debian 7 源</p>
+<div class="hlcode"><pre><span class="k">deb</span> <span class="s">http://mirrors.163.com/debian</span> <span class="kp">wheezy</span> <span class="kp">main</span> <span class="kp">non-free</span> <span class="kp">contrib</span>
+<span class="k">deb</span> <span class="s">http://mirrors.163.com/debian</span> <span class="kp">wheezy-proposed-updates</span> <span class="kp">main</span> <span class="kp">contrib</span> <span class="kp">non-free</span>
+<span class="k">deb-src</span> <span class="s">http://mirrors.163.com/debian</span> <span class="kp">wheezy</span> <span class="kp">main</span> <span class="kp">non-free</span> <span class="kp">contrib</span>
+<span class="k">deb-src</span> <span class="s">http://mirrors.163.com/debian</span> <span class="kp">wheezy-proposed-updates</span> <span class="kp">main</span> <span class="kp">contrib</span> <span class="kp">non-free</span>
+<span class="k">deb</span> <span class="s">http://mirrors.163.com/debian-security</span> <span class="kp">wheezy/updates</span> <span class="kp">main</span> <span class="kp">contrib</span> <span class="kp">non-free</span>
+<span class="k">deb-src</span> <span class="s">http://mirrors.163.com/debian-security</span> <span class="kp">wheezy/updates</span> <span class="kp">main</span> <span class="kp">contrib</span> <span class="kp">non-free</span>
+</pre></div>
+
+
+<p>软件库中安装 DRBL 的密钥</p>
+<div class="hlcode"><pre><span class="n">wget</span> <span class="o">-</span><span class="n">q</span> <span class="n">http</span><span class="o">:</span><span class="c1">//drbl.nchc.org.tw/GPG-KEY-DRBL -O- | sudo apt-key add -</span>
+</pre></div>
+
+
+<p>然后运行</p>
+<div class="hlcode"><pre><span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">update</span>
+<span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">install</span> <span class="n">drbl</span>
+</pre></div>
+
+
+<h1 id="_4">配置</h1>
+<h2 id="drbl_2">DRBL 服务器</h2>
+<p>DRBL 服务器的配置基本是 drblsrv -i，然后交互式地敲入一系列选项，个人配置公司环境的经验，基本上都选择默认选项，注意以下几点：</p>
+<ul>
+<li>首次安装最好在被询问到是否要升级系统时回答y</li>
+<li>首次安装要下载很多系统镜像，大概要半天时间</li>
+<li>给客户端选择内核时，选择本机使用的内核，否则耗费下载时间</li>
+<li>每次 drblsrv -i 之后，不需要 drblpush -i 重新建立客户端文档，但需要 dcs 重新配置下客户端环境，否则不推送 clonezliia， drblpush 和 dcs 后续客户端配置部分讲到</li>
+</ul>
+<h2 id="drbl_3">DRBL 上建立客户端文档文件系统</h2>
+<p>首先保证 Debian 7 服务器的ip配置:</p>
+<ul>
+<li>eth0 10.10.10.210 (远程登录用)</li>
+<li>eth1 10.10.10.253 (DRBL server client 通信，兼公司10网段dhcp)</li>
+</ul>
+<p>drblpush -i 基本一路默认，有几个特殊的注意</p>
+<ul>
+<li>
+<p>“这个域的客户端计算机中，起始的IP的4组数字中，最后一组数字的起始值是(也就是IP a.b.c.d的d的起始值)？这是针对连接到DRBL服务器网卡的 eth1.”  这里填写 129， 接着 “有多少台DRBL客户端计算机(也就是给学生使用的电脑)连接到DRBL服务器网卡 eth1 ?请输入数字:” 这里填写 61，这样 dhcp 范围就是 10.10.10.129 ~ 189 是公司 10 网段预留的 dhcp 段。</p>
+</li>
+<li>
+<p>“本系统中，有3种模式可以提供无盘的Linux服务给客户端使用：” 选择1。 “系统中，Clonezilla再生龙有4个模式可以选择：” 选择1。</p>
+</li>
+<li>
+<p>“您是否要为每台客户端计算机设置公开IP？” 选择n。</p>
+</li>
+<li>
+<p>“您是否要让DRBL服务器也能提供NAT服务” 选择n。</p>
+</li>
+<li>
+<p>“您是否要保留以前DRBL客户端计算机的设置？” 选择n。</p>
+</li>
+</ul>
+<p>如果曾经 drblpush 过，想重新用这个配置push，只需要 drblpush -c /etc/drbl/drblpush.conf （上一次的配置。有时候有这样的需要，比如你手工修改了 /etc/dhcp/dhcpd.conf，造成drbl客户端无法正常工作，重新drblpush一遍可以由drbl程序重新生成dhcpd.conf）</p>
+<h2 id="_5">管理客户端开机模式</h2>
+<p>drblpush 后，客户端网络启动可以进入DRBL默认的系统选择页面，这里没有clonezilla选项。还需要服务器上用 dcs 命令修改下客户端的开机模式。</p>
+<p>键入 dcs 命令，按以下截图配置</p>
+<p>至此 ，DRBL-Clonezilla 服务器配置完毕，可以在网络内的客户机上网络启动测试了。</p>
+<h1 id="_6">客户端系统的使用</h1>
+<ul>
+<li>
+<p>无盘 Debian 7 系统的用处前面已经说过，进入系统后使用和一般硬盘安装的Debian 是一样的。</p>
+</li>
+<li>
+<p>Clonezilla 可参看官方 Live 版的文档，DRBL 版的操作大同小异，公司环境生产使用 beginner 模式简单快捷，Expert 模式有很多可配置项，没有深入研究。</p>
+</li>
+<li>
+<p>Beginner 模式下你就可以看到一个很有用的功能选项： “recovery-iso-zip” 这个选项可以让你从/home/partimag/ 目录下保存的母盘镜像制作一个clonezilla自启动的刻录光盘镜像（iso 文件，zip 文件供制作作启动U盘用，解压到U盘，运行里面一个bat脚本即可制作）。这提供了我们一种部署系统的模式，如果客户要求用自己的设备，我们可以用recovery光盘将系统刻到客户设备的硬盘，只要硬件兼容性在我们的 Debian 7 系统支持下，硬盘规格符合 clonezilla 的要求（至少容量大于等于我们的母盘容量，最好同品牌），就能部署成功，部署的速度就像 G host 安装 Windows 一样快。MyAudit 无数据母盘镜像做成 recovery-iso 文件已大于一个普通 DVD 的容量, 但双面 D9 DVD 刻录光盘可以刻录。</p>
+</li>
+</ul>
+    </div>
+
+        </div>
+        <div id="footer">
+              <p>
+                Copyright © 2012-2017 Lostsummer.
+                Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+                Theme by <a href="https://github.com/tankywoo/yasimple" target="_blank">YASimple</a>.
+              </p>
+                <p>Last Update 2017-04-26 14:57:23</p>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <link rel="Stylesheet" type="text/css" href="/static/css/typo.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/reset_typo.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/tango.css">
+        <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+        <title>InfluxDB 写高可用 Relay - Wiki of Lostsummer</title>
+        <meta name="keywords" content="c, python, go, docker, influxdb"/>
+        <meta name="description" content="My Personal wiki."/>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+
+    <body>
+        <div id="container" class="typo">
+            
+    <div id="header">
+        <div id="post-nav">
+            
+            <a href="/">Home</a> » <a href="/#InfluxDB">InfluxDB</a> » InfluxDB 写高可用 Relay
+            
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    <div id="content">
+        <p>项目: <a href="https://github.com/influxdata/influxdb-relay">influxdata/influxdb-relay</a></p>
+<div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#influxdb-relay">InfluxDB Relay</a><ul>
+<li><a href="#_1">原理</a></li>
+<li><a href="#_2">安装</a></li>
+<li><a href="#_3">配置</a></li>
+<li><a href="#_4">描述</a></li>
+<li><a href="#_5">缓冲</a></li>
+<li><a href="#_6">恢复</a></li>
+<li><a href="#sharding">Sharding</a></li>
+<li><a href="#_7">忠告</a></li>
+<li><a href="#_8">构建</a></li>
+<li><a href="#_9">打包</a></li>
+<li><a href="#_10">搭建集群</a><ul>
+<li><a href="#_11">节点准备</a></li>
+<li><a href="#httppem">生成 http使用的pem</a></li>
+<li><a href="#relay">relay 配置</a></li>
+</ul>
+</li>
+<li><a href="#_12">启动</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h1 id="influxdb-relay">InfluxDB Relay</h1>
+<p>为 InfluxDB 提供基本的高可用层
+依赖 go 1.5++</p>
+<h2 id="_1">原理</h2>
+<p>只负责 write 的高可用，write 时根据配置的每个节点都要写一次，相当于多写
+read 需要其他工具做 Load Balance</p>
+<h2 id="_2">安装</h2>
+<p>从源码编译运行</p>
+<div class="hlcode"><pre><span class="nv">$ </span><span class="c"># Install influxdb-relay to your $GOPATH/bin</span>
+<span class="nv">$ </span>go get -u github.com/influxdata/influxdb-relay
+<span class="nv">$ </span><span class="c"># Edit your configuration file</span>
+<span class="nv">$ </span>cp <span class="nv">$GOPATH</span>/src/github.com/influxdata/influxdb-relay/sample.toml ./relay.toml
+<span class="nv">$ </span>vim relay.toml
+<span class="nv">$ </span><span class="c"># Start relay!</span>
+<span class="nv">$ $GOPATH</span>/bin/influxdb-relay -config relay.toml
+</pre></div>
+
+
+<h2 id="_3">配置</h2>
+<div class="hlcode"><pre><span class="k">[[http]]</span>
+<span class="c1"># Name of the HTTP server, used for display purposes only.</span>
+<span class="na">name</span> <span class="o">=</span> <span class="s">&quot;example-http&quot;</span>
+
+<span class="c1"># TCP address to bind to, for HTTP server.</span>
+<span class="na">bind-addr</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1:9096&quot;</span>
+
+<span class="c1"># Enable HTTPS requests.</span>
+<span class="na">ssl-combined-pem</span> <span class="o">=</span> <span class="s">&quot;/etc/ssl/influxdb-relay.pem&quot;</span>
+
+<span class="c1"># Array of InfluxDB instances to use as backends for Relay.</span>
+<span class="na">output</span> <span class="o">=</span> <span class="s">[</span>
+<span class="s">    # name: name of the backend, used for display purposes only.</span>
+<span class="s">    # location: full URL of the /write endpoint of the backend</span>
+<span class="s">    # timeout: Go-parseable time duration. Fail writes if incomplete in this time.</span>
+<span class="s">    # skip-tls-verification: skip verification for HTTPS location. WARNING: it&#39;s insecure. Don&#39;t use in production.</span>
+<span class="s">    { name=&quot;local1&quot;, location=&quot;http://127.0.0.1:8086/write&quot;, timeout=&quot;10s&quot; },</span>
+<span class="s">    { name=&quot;local2&quot;, location=&quot;http://127.0.0.1:7086/write&quot;, timeout=&quot;10s&quot; },</span>
+<span class="err">]</span>
+
+<span class="k">[[udp]]</span>
+<span class="c1"># Name of the UDP server, used for display purposes only.</span>
+<span class="na">name</span> <span class="o">=</span> <span class="s">&quot;example-udp&quot;</span>
+
+<span class="c1"># UDP address to bind to.</span>
+<span class="na">bind-addr</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1:9096&quot;</span>
+
+<span class="c1"># Socket buffer size for incoming connections.</span>
+<span class="na">read-buffer</span> <span class="o">=</span> <span class="s">0 # default</span>
+
+<span class="c1"># Precision to use for timestamps</span>
+<span class="na">precision</span> <span class="o">=</span> <span class="s">&quot;n&quot; # Can be n, u, ms, s, m, h</span>
+
+<span class="c1"># Array of InfluxDB instances to use as backends for Relay.</span>
+<span class="na">output</span> <span class="o">=</span> <span class="s">[</span>
+<span class="s">    # name: name of the backend, used for display purposes only.</span>
+<span class="s">    # location: host and port of backend.</span>
+<span class="s">    # mtu: maximum output payload size</span>
+<span class="s">    { name=&quot;local1&quot;, location=&quot;127.0.0.1:8089&quot;, mtu=512 },</span>
+<span class="s">    { name=&quot;local2&quot;, location=&quot;127.0.0.1:7089&quot;, mtu=1024 },</span>
+<span class="err">]</span>
+</pre></div>
+
+
+<h2 id="_4">描述</h2>
+<p>架构相当简单，由一个负载均衡器，两个以上 InfluxDB relay 进程和两个以上 InfluxDB 进程组成。负载均衡器要将 UDP 数据和发往路径 "/write" 的 HTTP POST 请求定向到两个 relay，将方法路径 "/query" 的 GET 请求定向到两个InfluxDB。</p>
+<p>安装起来像下面这样：</p>
+<div class="hlcode"><pre>        <span class="err">┌─────────────────┐</span>
+        <span class="err">│</span><span class="n">writes</span> <span class="o">&amp;</span> <span class="n">queries</span> <span class="err">│</span>
+        <span class="err">└─────────────────┘</span>
+                 <span class="err">│</span>
+                 <span class="err">▼</span>
+         <span class="err">┌───────────────┐</span>
+         <span class="err">│</span>               <span class="err">│</span>
+<span class="err">┌────────│</span> <span class="n">Load</span> <span class="n">Balancer</span> <span class="err">│─────────┐</span>
+<span class="err">│</span>        <span class="err">│</span>               <span class="err">│</span>         <span class="err">│</span>
+<span class="err">│</span>        <span class="err">└──────┬─┬──────┘</span>         <span class="err">│</span>
+<span class="err">│</span>               <span class="err">│</span> <span class="err">│</span>                <span class="err">│</span>
+<span class="err">│</span>               <span class="err">│</span> <span class="err">│</span>                <span class="err">│</span>
+<span class="err">│</span>        <span class="err">┌──────┘</span> <span class="err">└────────┐</span>       <span class="err">│</span>
+<span class="err">│</span>        <span class="err">│</span> <span class="err">┌─────────────┐</span> <span class="err">│</span>       <span class="err">│┌──────┐</span>
+<span class="err">│</span>        <span class="err">│</span> <span class="err">│</span><span class="o">/</span><span class="n">write</span> <span class="n">or</span> <span class="n">UDP</span><span class="err">│</span> <span class="err">│</span>       <span class="err">││</span><span class="o">/</span><span class="n">query</span><span class="err">│</span>
+<span class="err">│</span>        <span class="err">▼</span> <span class="err">└─────────────┘</span> <span class="err">▼</span>       <span class="err">│└──────┘</span>
+<span class="err">│</span>  <span class="err">┌──────────┐</span>      <span class="err">┌──────────┐</span>  <span class="err">│</span>
+<span class="err">│</span>  <span class="err">│</span> <span class="n">InfluxDB</span> <span class="err">│</span>      <span class="err">│</span> <span class="n">InfluxDB</span> <span class="err">│</span>  <span class="err">│</span>
+<span class="err">│</span>  <span class="err">│</span> <span class="n">Relay</span>    <span class="err">│</span>      <span class="err">│</span> <span class="n">Relay</span>    <span class="err">│</span>  <span class="err">│</span>
+<span class="err">│</span>  <span class="err">└──┬────┬──┘</span>      <span class="err">└────┬──┬──┘</span>  <span class="err">│</span>
+<span class="err">│</span>     <span class="err">│</span>    <span class="o">|</span>              <span class="o">|</span>  <span class="err">│</span>     <span class="err">│</span>
+<span class="err">│</span>     <span class="o">|</span>  <span class="err">┌─┼──────────────┘</span>  <span class="o">|</span>     <span class="err">│</span>
+<span class="err">│</span>     <span class="err">│</span>  <span class="err">│</span> <span class="err">└──────────────┐</span>  <span class="err">│</span>     <span class="err">│</span>
+<span class="err">│</span>     <span class="err">▼</span>  <span class="err">▼</span>                <span class="err">▼</span>  <span class="err">▼</span>     <span class="err">│</span>
+<span class="err">│</span>  <span class="err">┌──────────┐</span>      <span class="err">┌──────────┐</span>  <span class="err">│</span>
+<span class="err">│</span>  <span class="err">│</span>          <span class="err">│</span>      <span class="err">│</span>          <span class="err">│</span>  <span class="err">│</span>
+<span class="err">└─▶│</span> <span class="n">InfluxDB</span> <span class="err">│</span>      <span class="err">│</span> <span class="n">InfluxDB</span> <span class="err">│◀─┘</span>
+   <span class="err">│</span>          <span class="err">│</span>      <span class="err">│</span>          <span class="err">│</span>
+   <span class="err">└──────────┘</span>      <span class="err">└──────────┘</span>
+</pre></div>
+
+
+<h2 id="_5">缓冲</h2>
+<p>relay 可以通过配置为 HTTP 后端缓冲错误请求
+这个设计逻辑是为了减少在网络中断或周期性的网络问题发生时请求错误的数量</p>
+<blockquote>
+<p>这个重试逻辑并 <strong>不</strong> 适合长时间中断的情况，因为所有数据都保存在内存中</p>
+</blockquote>
+<p>选项 （每 HTTP 后端）</p>
+<ul>
+<li>buffer-size-mb -- 端点数据保存在内存中的上限 (MB)</li>
+<li>max-batch-kb -- 要发送的聚合批数据的最大尺寸 (in KB)</li>
+<li>max-delay-interval -- 和每个后端每次重传的最大延迟.
+    初始值为500ms，每次失败后翻倍</li>
+</ul>
+<p>如果缓冲满，会丢弃新的请求，并记录错误日志
+进入缓冲的请求会不断重传直至写入成功</p>
+<p>重传数据会被序列化到单独的后端。需要补充的是，写数据会被聚合成批数据，尺寸在配置的最大值范围内尽可能大。
+如果缓冲的数据成功写入，后续的数据将无延迟尝试。</p>
+<p>如果一个后端 down 掉而 relay 数据还没有写入, 那么这些没被写入的 relay 数据会在线驻留在缓冲中，直到缓冲被刷掉，这意味着不需要运维余外干涉去恢复数据，数据会自己聚合成批，按照接收顺序写到恢复数据库中。</p>
+<p><em>NOTE</em>: The limits for buffering are not hard limits on the memory usage of the application, and there will be additional overhead that would be much more challenging to account for. The limits listed are just for the amount of point line protocol (including any added timestamps, if applicable). Factors such as small incoming batch sizes and a smaller max batch size will increase the overhead in the buffer. There is also the general application memory overhead to account for. This means that a machine with 2GB of memory should not have buffers that sum up to <em>almost</em> 2GB.</p>
+<h2 id="_6">恢复</h2>
+<p>InfluxDB 把它的磁盘数据组织成时间逻辑块，叫做 shard，我们可以借此创建一个零故障时间的热备进程。</p>
+<p>一个 shard 呈现在 InfluxDB 中的时间一般是1小时，1天，或7天，取决于数据保留时间，但是可以在创建数据保留策略时显式设置。我们的例子中，假设shard的保留期是1天。</p>
+<p>比如说，一个 InfluxDB 服务器在 2016-03-10 down 掉一小时。一旦跨过午夜 UTC 时间，所有的 InfluxDB 进程正把 2016-03-11 的数据写入 shard，2016-03-10 的文件被冻结写操作。我么可以靠以下步骤复原数据：</p>
+<ol>
+<li>通知 LB 停止向 down 掉的服务器发送查询数据（需要一侦测到故障马上操作以阻止查询返回切片或不连续)</li>
+<li>从整天都运行的服务器上创建一个 2016-03-10 的备份</li>
+<li>在 down 掉的机器上用这个备份恢复 shard</li>
+<li>通知LB向之前 down 掉的服务器恢复发送查询</li>
+</ol>
+<p>整个过程Relay需要向每台服务器发送写数据，包括之前down掉过的。</p>
+<h2 id="sharding">Sharding</h2>
+<p>可以在这种安装方式之上为 shard 数据再添加一层。根据需要你可以根据 measurement 名称或特定的 tag，比如 customer_id，来建立 shard。sharding 层既可以为查询服务业可以为数据写入服务。</p>
+<p>因为 relay 不处理查询，所以它不实现任何 sharding 逻辑。sharding 必须在 relay 层外部做。</p>
+<h2 id="_7">忠告</h2>
+<p>虽然 relay 提供了一些层次的高可用特性，但仍有一些场景需要说明下：</p>
+<ul>
+<li>influxdb-relay 并不处理 /query 端，包括数据库 schema 的修改（create, drop，etc）。 这就要求在写库数据进入前必须预先创建好数据库。</li>
+<li>连续查询（continuous query）仍然只在本地写查询结果。如果一台服务器 down 掉，数据恢复之后连续查询需要自己回填数据。</li>
+<li>重写（overwrite）数据有潜在的不可预期性。比如，两台数据库 A 和 B，如果 B down 掉，数据 X （我们记为 X1）恰好在 B 恢复上线前写入，这个写操作在队列中排在 B 下线时的其他写操作之后。一旦 B 重新上线，第一个缓存的数据写入成功，所有新的写入数据被放行。这时（X1 写入 B 之前）, X 又向 A 和 B 被写了一遍（此时值为 X2），当 relay 到达 B 的写缓冲底部时，它会把 X （值为 X1）写入 B …… 此时 A 中有 X2，B 中有 X1.<ul>
+<li>如果可以最好避免重写数据点，否则就要注意重写一个数据点的同一个值段会导致数据不一致。</li>
+<li>可以这样规避，等待缓冲区数据全部刷出后，在开放数据写入。</li>
+</ul>
+</li>
+</ul>
+<h2 id="_8">构建</h2>
+<p>推荐使用 docker 方式编译，Dockerfile (Dockerfile_build_ubuntu64) 提供了包含所有依赖包的编译环境。</p>
+<p>构建 docker 镜像：</p>
+<div class="hlcode"><pre><span class="n">docker</span> <span class="n">build</span> <span class="o">-</span><span class="n">f</span> <span class="n">Dockerfile_build_ubuntu64</span> <span class="o">-</span><span class="n">t</span> <span class="n">influxdb</span><span class="o">-</span><span class="n">relay</span><span class="o">-</span><span class="n">builder</span><span class="o">:</span><span class="n">latest</span> <span class="p">.</span>
+</pre></div>
+
+
+<p>编译构建工程：</p>
+<div class="hlcode"><pre><span class="n">docker</span> <span class="n">run</span> <span class="o">--</span><span class="n">rm</span> <span class="o">-</span><span class="n">v</span> <span class="err">$</span><span class="p">(</span><span class="n">pwd</span><span class="p">)</span><span class="o">:/</span><span class="n">root</span><span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="p">.</span><span class="n">com</span><span class="o">/</span><span class="n">influxdata</span><span class="o">/</span><span class="n">influxdb</span><span class="o">-</span><span class="n">relay</span> <span class="n">influxdb</span><span class="o">-</span><span class="n">relay</span><span class="o">-</span><span class="n">builder</span>
+</pre></div>
+
+
+<p>调用的是 build.py 脚本，构建输出在 ./build 目录。查看构建可以命令列表，用 --help 选项</p>
+<div class="hlcode"><pre><span class="n">docker</span> <span class="n">run</span> <span class="o">-</span><span class="n">v</span> <span class="err">$</span><span class="p">(</span><span class="n">pwd</span><span class="p">)</span><span class="o">:/</span><span class="n">root</span><span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="p">.</span><span class="n">com</span><span class="o">/</span><span class="n">influxdata</span><span class="o">/</span><span class="n">influxdb</span><span class="o">-</span><span class="n">relay</span> <span class="n">influxdb</span><span class="o">-</span><span class="n">relay</span><span class="o">-</span><span class="n">builder</span> <span class="o">--</span><span class="n">help</span>
+</pre></div>
+
+
+<h2 id="_9">打包</h2>
+<p>构建各种 Linux 系统包（deb，rpm，etc），使用 --package 选项:</p>
+<div class="hlcode"><pre><span class="n">docker</span> <span class="n">run</span> <span class="o">-</span><span class="n">v</span> <span class="err">$</span><span class="p">(</span><span class="n">pwd</span><span class="p">)</span><span class="o">:/</span><span class="n">root</span><span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="p">.</span><span class="n">com</span><span class="o">/</span><span class="n">influxdata</span><span class="o">/</span><span class="n">influxdb</span><span class="o">-</span><span class="n">relay</span> <span class="n">influxdb</span><span class="o">-</span><span class="n">relay</span><span class="o">-</span><span class="n">builder</span> <span class="o">--</span><span class="n">package</span>
+</pre></div>
+
+
+<h2 id="_10">搭建集群</h2>
+<h3 id="_11">节点准备</h3>
+<p>node_relay 安装好
+node_a, node_b 按标准安装好</p>
+<div class="hlcode"><pre><span class="n">node_relay</span><span class="o">:</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">1.112</span>
+<span class="n">node_a</span><span class="o">:</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">1.12</span>
+<span class="n">node_b</span><span class="o">:</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">1.15</span>
+</pre></div>
+
+
+<h3 id="httppem">生成 http使用的pem</h3>
+<p>密码: influxdb123</p>
+<p>openssl genrsa -des3 -out /etc/influxdb/influxdb-relay.pem 2048</p>
+<h3 id="relay">relay 配置</h3>
+<p>vim /etc/influxdb/relay.toml</p>
+<div class="hlcode"><pre><span class="k">[[http]]</span>
+<span class="na">name</span> <span class="o">=</span> <span class="s">&quot;influxdb-http-dba&quot;</span>
+<span class="na">bind-addr</span> <span class="o">=</span> <span class="s">&quot;0.0.0.0:9096&quot;</span>
+<span class="na">output</span> <span class="o">=</span> <span class="s">[</span>
+<span class="s">    { name=&quot;http-12&quot;, location = &quot;http://192.168.1.12:8086/write&quot;, timeout=&quot;10s&quot;, buffer-size-mb = 100, max-batch-kb = 50, max-delay-interval = &quot;5s&quot; },</span>
+<span class="s">    { name=&quot;http-15&quot;, location = &quot;http://192.168.1.15:8086/write&quot;, timeout=&quot;10s&quot;, buffer-size-mb = 100, max-batch-kb = 50, max-delay-interval = &quot;5s&quot; },</span>
+<span class="err">]</span>
+
+<span class="k">[[udp]]</span>
+<span class="na">name</span> <span class="o">=</span> <span class="s">&quot;influxdb-udp-dba&quot;</span>
+<span class="na">bind-addr</span> <span class="o">=</span> <span class="s">&quot;0.0.0.0:9099&quot;</span>
+<span class="na">read-buffer</span> <span class="o">=</span> <span class="s">0</span>
+<span class="na">precision</span> <span class="o">=</span> <span class="s">&quot;n&quot;</span>
+<span class="na">output</span> <span class="o">=</span> <span class="s">[</span>
+<span class="s">    { name=&quot;udp-12&quot;, location=&quot;192.168.1.12:8089&quot;, mtu=512 },</span>
+<span class="s">    { name=&quot;udp-15&quot;, location=&quot;192.168.1.15:8089&quot;, mtu=1024 },</span>
+<span class="err">]</span>
+</pre></div>
+
+
+<h2 id="_12">启动</h2>
+<div class="hlcode"><pre><span class="n">nohup</span> <span class="err">$</span><span class="n">GOPATH</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">influxdb</span><span class="o">-</span><span class="n">relay</span> <span class="o">-</span><span class="n">config</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">influxdb</span><span class="o">/</span><span class="n">relay</span><span class="p">.</span><span class="n">toml</span> <span class="o">&gt;/</span><span class="n">tmp</span><span class="o">/</span><span class="n">influxdb_relay</span><span class="p">.</span><span class="n">log</span> <span class="mi">2</span><span class="o">&gt;/</span><span class="n">dev</span><span class="o">/</span><span class="n">null</span> <span class="o">&amp;</span>
+</pre></div>
+    </div>
+
+        </div>
+        <div id="footer">
+              <p>
+                Copyright © 2012-2017 Lostsummer.
+                Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+                Theme by <a href="https://github.com/tankywoo/yasimple" target="_blank">YASimple</a>.
+              </p>
+                <p>Last Update 2017-04-26 14:57:23</p>
+        </div>
+    </body>
+</html>

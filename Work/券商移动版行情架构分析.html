@@ -1,0 +1,145 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>券商移动版行情架构分析 - Wiki of Lostsummer</title>
+    <meta name="keywords" content="c, python, go, docker, influxdb"/>
+    <meta name="description" content="My Personal wiki."/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Wiki of Lostsummer</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#Work">Work</a>
+    &nbsp;&#187;&nbsp;券商移动版行情架构分析
+    <span class="updated">Updated&nbsp;
+    2017-05-03 17:44
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#_1">当前移动版架构</a></li>
+<li><a href="#_2">主要业务流程</a><ul>
+<li><a href="#_3">用户登录流程</a></li>
+<li><a href="#_4">用户信息查询修改流程</a></li>
+<li><a href="#_5">用户行情数据获取</a></li>
+</ul>
+</li>
+<li><a href="#_6">缺陷分析</a><ul>
+<li><a href="#_7">共同缺陷</a></li>
+<li><a href="#_8">各部分缺陷</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h1 id="_1">当前移动版架构</h1>
+<p>仅展示移动版行情功能涉及的上下游结构，不涉及交易模块</p>
+<p>Front 上游是上证或券商提供的行情数据接口，部分外盘数据可能来自新浪公开的接口</p>
+<p>FSServer 部署在公司，Memcache 由公司服务定时远程写入数据</p>
+<p><img alt="" src="http://ooyi4zkat.bkt.clouddn.com/%E8%A1%8C%E6%83%85%E6%9E%B6%E6%9E%84.png" /></p>
+<h1 id="_2">主要业务流程</h1>
+<h2 id="_3">用户登录流程</h2>
+<p>用户登录区分匿名/实名，首次/非首次</p>
+<p>Fee 验证通过后，LB 返回一个相对空闲的 DS URL （实际就是 IP：PORT 拼合）返回给客户端</p>
+<p>所有 DS 的 服务端口要暴露在公网中</p>
+<p><img alt="" src="http://ooyi4zkat.bkt.clouddn.com/%E7%94%A8%E6%88%B7%E7%99%BB%E5%BD%95%E6%97%B6%E5%BA%8F%E5%9B%BE.png" /></p>
+<h2 id="_4">用户信息查询修改流程</h2>
+<p>DS 转发客户请求给 Fee</p>
+<p><img alt="" src="http://ooyi4zkat.bkt.clouddn.com/%E7%94%A8%E6%88%B7%E4%BF%A1%E6%81%AF%E6%9F%A5%E8%AF%A2%E4%BF%AE%E6%94%B9.png" /></p>
+<h2 id="_5">用户行情数据获取</h2>
+<p><img alt="" src="http://ooyi4zkat.bkt.clouddn.com/%E7%94%A8%E6%88%B7%E8%A1%8C%E6%83%85%E6%95%B0%E6%8D%AE%E8%AF%B7%E6%B1%82.png" /></p>
+<h1 id="_6">缺陷分析</h1>
+<h2 id="_7">共同缺陷</h2>
+<ul>
+<li>功能定义混子不明确</li>
+<li>稳定性差</li>
+<li>接口复杂不明晰且文档缺位</li>
+<li>缺少热备，自动恢复方案</li>
+<li>Debug困难</li>
+</ul>
+<h2 id="_8">各部分缺陷</h2>
+<ol>
+<li>数据上游 Front 没有好的高可用方案</li>
+<li>DM DS 冗余<ul>
+<li>重复的数据下发，驻存</li>
+</ul>
+</li>
+<li>DM DS 职责不明 (明确的设计是区分计算节点和分发节点)<ul>
+<li>有些指标 DS 也承担计算任务</li>
+<li>操盘线 DS 引入 CalcCPX.o</li>
+</ul>
+</li>
+<li>LB DS 分工不明 （缺少 API 网关）<ul>
+<li>用户登录由 LB 转发到 Fee</li>
+<li>用户改密等由 DS 转发到 Fee</li>
+</ul>
+</li>
+<li>DM DS 存储不健壮<ul>
+<li>本地文件数据库<ul>
+<li>IO 其实更频繁，内存态占用也打</li>
+<li>Debug 不容易</li>
+<li>存储结构更改麻烦</li>
+</ul>
+</li>
+<li>内存落地文件<ul>
+<li>定时任务强杀时容易损坏，出错时需手动删除重启</li>
+<li>Debug 不容易</li>
+<li>存储结构更改麻烦</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>DM DS 数据存储布局不合理 <ul>
+<li>瀑布分流的结构，上游一个节点出错，下游10处需要手动修改</li>
+<li>应该有中心化，热备方案</li>
+</ul>
+</li>
+<li>DS 接口暴露公网<ul>
+<li>伪负载均衡</li>
+<li>登录鉴权可以被绕过</li>
+</ul>
+</li>
+<li>Fee 承担业务多<ul>
+<li>登录鉴权</li>
+<li>用户行为</li>
+<li>用户信息查询</li>
+<li>用户信息修改</li>
+<li>特殊活动</li>
+<li>交易信息</li>
+<li>...</li>
+</ul>
+</li>
+<li>Fee 和 DB 的 Redis 缓存做的不够好</li>
+</ol>
+  
+</div>
+    </div>
+    <div id="footer">
+      <div class="footer-left">
+        <p>
+        Copyright © 2017 Lostsummer.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://git.coding.net/tankywoo/yasimple_x2.git" target="_blank">YASimple_X2</a>.
+        </p>
+      </div> <!-- end footer-left -->
+      <div class="footer-right">
+        <p>Site Generated 2017-05-03 18:44:16</p>
+      </div> <!-- end footer-right -->
+    </div>
+
+    
+    
+  </body>
+</html>

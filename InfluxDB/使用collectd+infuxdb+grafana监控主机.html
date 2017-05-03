@@ -1,29 +1,35 @@
 <!DOCTYPE HTML>
 <html>
-    <head>
-        <link rel="Stylesheet" type="text/css" href="/static/css/typo.css">
-        <link rel="Stylesheet" type="text/css" href="/static/css/reset_typo.css">
-        <link rel="Stylesheet" type="text/css" href="/static/css/tango.css">
-        <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
-        <title>使用 CollectD + InfuxDB + Grafana 监控主机 - Wiki of Lostsummer</title>
-        <meta name="keywords" content="c, python, go, docker, influxdb"/>
-        <meta name="description" content="My Personal wiki."/>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    </head>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>使用 CollectD + InfuxDB + Grafana 监控主机 - Wiki of Lostsummer</title>
+    <meta name="keywords" content="c, python, go, docker, influxdb"/>
+    <meta name="description" content="My Personal wiki."/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
 
-    <body>
-        <div id="container" class="typo">
-            
-    <div id="header">
-        <div id="post-nav">
-            
-            <a href="/">Home</a> » <a href="/#InfluxDB">InfluxDB</a> » 使用 CollectD + InfuxDB + Grafana 监控主机
-            
-        </div>
-    </div>
-    <div class="clearfix"></div>
-    <div id="content">
-        <p>原文： <a href="http://jansipke.nl/monitoring-hosts-with-collectd-influxdb-and-grafana/" title="原文地址">Monitoring hosts with CollectD, InfluxDB and Grafana</a></p>
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Wiki of Lostsummer</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#InfluxDB">InfluxDB</a>
+    &nbsp;&#187;&nbsp;使用 CollectD + InfuxDB + Grafana 监控主机
+    <span class="updated">Updated&nbsp;
+    2017-04-19 15:55
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <p>原文： <a href="http://jansipke.nl/monitoring-hosts-with-collectd-influxdb-and-grafana/" title="原文地址">Monitoring hosts with CollectD, InfluxDB and Grafana</a></p>
 <p>本篇文章将介绍一种监控主机的解决方案 —— 在 CentOS 7 系统上搭建 CollectD, InfluxDB 和 Grafana 的组合。</p>
 <div class="toc"><span class="toctitle">Table of Contents</span><ul>
 <li><a href="#collectd">安装配置 CollectD</a></li>
@@ -141,16 +147,23 @@
 <p><img alt="gf8" src="http://jansipke.nl/wp-content/uploads/grafana9.png" /></p>
 <p>点击 "+ Query" 添加 interface_tx 的查询，方法同上。为两个查询添加别名 ( Alias )： interface_rx : Received (接收), interface_tx : Transmitted (输送)。 graph 将变成类似下面的样子：</p>
 <p><img alt="gf9" src="http://jansipke.nl/wp-content/uploads/grafana10.png" /></p>
+  
+</div>
+    </div>
+    <div id="footer">
+      <div class="footer-left">
+        <p>
+        Copyright © 2017 Lostsummer.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://git.coding.net/tankywoo/yasimple_x2.git" target="_blank">YASimple_X2</a>.
+        </p>
+      </div> <!-- end footer-left -->
+      <div class="footer-right">
+        <p>Site Generated 2017-05-03 18:44:16</p>
+      </div> <!-- end footer-right -->
     </div>
 
-        </div>
-        <div id="footer">
-              <p>
-                Copyright © 2012-2017 Lostsummer.
-                Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
-                Theme by <a href="https://github.com/tankywoo/yasimple" target="_blank">YASimple</a>.
-              </p>
-                <p>Last Update 2017-04-26 14:57:23</p>
-        </div>
-    </body>
+    
+    
+  </body>
 </html>

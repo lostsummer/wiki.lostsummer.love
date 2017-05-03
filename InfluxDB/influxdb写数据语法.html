@@ -1,29 +1,35 @@
 <!DOCTYPE HTML>
 <html>
-    <head>
-        <link rel="Stylesheet" type="text/css" href="/static/css/typo.css">
-        <link rel="Stylesheet" type="text/css" href="/static/css/reset_typo.css">
-        <link rel="Stylesheet" type="text/css" href="/static/css/tango.css">
-        <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
-        <title>InfluxDB 写数据语法 - Wiki of Lostsummer</title>
-        <meta name="keywords" content="c, python, go, docker, influxdb"/>
-        <meta name="description" content="My Personal wiki."/>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    </head>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>InfluxDB 写数据语法 - Wiki of Lostsummer</title>
+    <meta name="keywords" content="c, python, go, docker, influxdb"/>
+    <meta name="description" content="My Personal wiki."/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
 
-    <body>
-        <div id="container" class="typo">
-            
-    <div id="header">
-        <div id="post-nav">
-            
-            <a href="/">Home</a> » <a href="/#InfluxDB">InfluxDB</a> » InfluxDB 写数据语法
-            
-        </div>
-    </div>
-    <div class="clearfix"></div>
-    <div id="content">
-        <p>本篇是官方文档的一个蹩脚翻译，原文：<a href="https://docs.influxdata.com/influxdb/v0.13/write_protocols/write_syntax/">Write Syntax</a></p>
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Wiki of Lostsummer</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#InfluxDB">InfluxDB</a>
+    &nbsp;&#187;&nbsp;InfluxDB 写数据语法
+    <span class="updated">Updated&nbsp;
+    2017-04-19 16:09
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <p>本篇是官方文档的一个蹩脚翻译，原文：<a href="https://docs.influxdata.com/influxdb/v0.13/write_protocols/write_syntax/">Write Syntax</a></p>
 <p>语法总是容易忘记，这里是一个参考手册</p>
 <div class="toc"><span class="toctitle">Table of Contents</span><ul>
 <li><a href="#line-protocol">行协议 ( Line Protocol )</a><ul>
@@ -217,16 +223,23 @@
 
 <h2 id="_13">警告</h2>
 <p>使用 curl 的 --data-binary 编码所有行协议（line protocal） 格式的 write 数据。使用 --data-binary 以外的方法写数据点可能会有一些问题。 -d， --data-urlencode，--data-ascii 可能都会截掉换行符或者用其他格式替换。</p>
+  
+</div>
+    </div>
+    <div id="footer">
+      <div class="footer-left">
+        <p>
+        Copyright © 2017 Lostsummer.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://git.coding.net/tankywoo/yasimple_x2.git" target="_blank">YASimple_X2</a>.
+        </p>
+      </div> <!-- end footer-left -->
+      <div class="footer-right">
+        <p>Site Generated 2017-05-03 18:44:16</p>
+      </div> <!-- end footer-right -->
     </div>
 
-        </div>
-        <div id="footer">
-              <p>
-                Copyright © 2012-2017 Lostsummer.
-                Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
-                Theme by <a href="https://github.com/tankywoo/yasimple" target="_blank">YASimple</a>.
-              </p>
-                <p>Last Update 2017-04-26 14:57:23</p>
-        </div>
-    </body>
+    
+    
+  </body>
 </html>

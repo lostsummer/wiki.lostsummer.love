@@ -1,29 +1,35 @@
 <!DOCTYPE HTML>
 <html>
-    <head>
-        <link rel="Stylesheet" type="text/css" href="/static/css/typo.css">
-        <link rel="Stylesheet" type="text/css" href="/static/css/reset_typo.css">
-        <link rel="Stylesheet" type="text/css" href="/static/css/tango.css">
-        <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
-        <title>SQL Server 2008 审计功能配置及使用 - Wiki of Lostsummer</title>
-        <meta name="keywords" content="c, python, go, docker, influxdb"/>
-        <meta name="description" content="My Personal wiki."/>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    </head>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>SQL Server 2008 审计功能配置及使用 - Wiki of Lostsummer</title>
+    <meta name="keywords" content="c, python, go, docker, influxdb"/>
+    <meta name="description" content="My Personal wiki."/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
 
-    <body>
-        <div id="container" class="typo">
-            
-    <div id="header">
-        <div id="post-nav">
-            
-            <a href="/">Home</a> » <a href="/#DBAudit">DBAudit</a> » SQL Server 2008 审计功能配置及使用
-            
-        </div>
-    </div>
-    <div class="clearfix"></div>
-    <div id="content">
-        <h2 id="_1">详细说明</h2>
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Wiki of Lostsummer</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#DBAudit">DBAudit</a>
+    &nbsp;&#187;&nbsp;SQL Server 2008 审计功能配置及使用
+    <span class="updated">Updated&nbsp;
+    2017-04-25 16:02
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <h2 id="_1">详细说明</h2>
 <h3 id="_2">概述</h3>
 <p>创建数据库审计的步骤主要包括：<strong>创建审计对象</strong>，<strong>创建审计规范并绑定审计对象</strong>，<strong>查看审计事件</strong></p>
 <p>审计级别：<strong>服务器级别</strong>，<strong>数据库级别</strong></p>
@@ -409,16 +415,23 @@
 
 <h2 id="_11">总结</h2>
 <p>审计功能最大的好处是：你使用自建审计表来保存审计数据，如果聪明的黑客攻破你的数据库实例，他自然可以把你的那个审计表drop掉，你同样查不出黑客的任何蛛丝马迹，而审计不同，他把审计数据放在SQLSERVER外面，除非你们公司的SA和DBA的安全意识很弱，黑客有机会把磁盘文件删除掉，否则依然有可能查出黑客的蛛丝马迹进行预防！！</p>
+  
+</div>
+    </div>
+    <div id="footer">
+      <div class="footer-left">
+        <p>
+        Copyright © 2017 Lostsummer.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://git.coding.net/tankywoo/yasimple_x2.git" target="_blank">YASimple_X2</a>.
+        </p>
+      </div> <!-- end footer-left -->
+      <div class="footer-right">
+        <p>Site Generated 2017-05-03 18:44:16</p>
+      </div> <!-- end footer-right -->
     </div>
 
-        </div>
-        <div id="footer">
-              <p>
-                Copyright © 2012-2017 Lostsummer.
-                Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
-                Theme by <a href="https://github.com/tankywoo/yasimple" target="_blank">YASimple</a>.
-              </p>
-                <p>Last Update 2017-04-26 14:57:23</p>
-        </div>
-    </body>
+    
+    
+  </body>
 </html>

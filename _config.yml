@@ -7,7 +7,7 @@ keywords: c, python, go, docker, influxdb
 description: My Personal wiki.
 author: Lostsummer
 
-theme: yasimple
+theme: yasimple_x2
 
 deploy:
     - type: git

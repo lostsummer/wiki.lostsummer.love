@@ -1,0 +1,334 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>InfluxDB + relay + keepalived  双机高可用配置 - Wiki of Lostsummer</title>
+    <meta name="keywords" content="c, python, go, docker, influxdb"/>
+    <meta name="description" content="My Personal wiki."/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Wiki of Lostsummer</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#Work">Work</a>
+    &nbsp;&#187;&nbsp;InfluxDB + relay + keepalived  双机高可用配置
+    <span class="updated">Updated&nbsp;
+    2017-05-12 16:05
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#_1">硬件</a></li>
+<li><a href="#influxdb-relay">InfluxDB + Relay 安装配置</a><ul>
+<li><a href="#_2">架构差异：</a></li>
+<li><a href="#relay">Relay 配置</a></li>
+</ul>
+</li>
+<li><a href="#keepalived">Keepalived  安装配置</a><ul>
+<li><a href="#_3">配置</a><ul>
+<li><a href="#relay-http-write-influxdb-query">为 relay http 写入端 /write 和 InfluxDB 查询端 /query 配置心跳检查</a></li>
+<li><a href="#relay-http-write">主备切换检查每个 relay http /write 活性</a></li>
+<li><a href="#_4">完整配置文件</a><ul>
+<li><a href="#keepalivedconf-on-17231376">keepalived.conf on 172.31.37.6</a></li>
+<li><a href="#keepalivedconf-on-17231377">keepalived.conf on 172.31.37.7</a></li>
+</ul>
+</li>
+<li><a href="#sendmailpy">通知邮件脚本 sendmail.py 参考</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<h1 id="_1">硬件</h1>
+<p>内网互通 CentOS64 主机 x 2</p>
+<p>添加 /etc/hosts</p>
+<p>172.31.37.6</p>
+<div class="hlcode"><pre><span class="mf">172.31.37.6</span>     <span class="mi">37</span><span class="n">D6</span><span class="p">.</span><span class="n">localhost</span> <span class="mi">37</span><span class="n">D6</span>
+<span class="mf">172.31.37.7</span>     <span class="mi">37</span><span class="n">D7</span>
+<span class="mf">172.28.1.120</span>    <span class="n">smtp</span><span class="p">.</span><span class="n">emoney</span><span class="p">.</span><span class="n">cn</span>
+</pre></div>
+
+
+<p>172.31.37.7</p>
+<div class="hlcode"><pre><span class="mf">172.31.37.7</span>     <span class="mi">37</span><span class="n">D7</span><span class="p">.</span><span class="n">localhost</span> <span class="mi">37</span><span class="n">D7</span>
+<span class="mf">172.31.37.6</span>     <span class="mi">37</span><span class="n">D6</span>
+<span class="mf">172.28.1.120</span>    <span class="n">smtp</span><span class="p">.</span><span class="n">emoney</span><span class="p">.</span><span class="n">cn</span>
+</pre></div>
+
+
+<h1 id="influxdb-relay">InfluxDB + Relay 安装配置</h1>
+<p>安装参见 <a href="http://wiki.lostsummer.love/InfluxDB/influxdb%E5%86%99%E9%AB%98%E5%8F%AF%E7%94%A8relay.html">InfluxDB 写高可用 Relay</a></p>
+<h2 id="_2">架构差异：</h2>
+<p>相比较上面官方给出的方案，取消了 LB，使用 Keepalived</p>
+<p><img alt="myrelay" src="http://ooyi4zkat.bkt.clouddn.com/myrelay.png" /></p>
+<h2 id="relay">Relay 配置</h2>
+<p>relay http://0.0.0.0:9096/write   -&gt; InfluxDB http://0.0.0.0:8086/write
+relay udp 0.0.0.0:9096              -&gt; InfluxDB udp 0.0.0.0:8089</p>
+<p>172.31.37.6</p>
+<div class="hlcode"><pre><span class="k">[[http]]</span>
+<span class="na">name</span> <span class="o">=</span> <span class="s">&quot;relay2-http&quot;</span>
+<span class="na">bind-addr</span> <span class="o">=</span> <span class="s">&quot;0.0.0.0:9096&quot;</span>
+<span class="na">output</span> <span class="o">=</span> <span class="s">[</span>
+<span class="s">    { name=&quot;influxdb1&quot;, location = &quot;http://37D7:8086/write&quot; },</span>
+<span class="s">    { name=&quot;influxdb2&quot;, location = &quot;http://37D6:8086/write&quot; },</span>
+<span class="err">]</span>
+
+<span class="k">[[udp]]</span>
+<span class="na">name</span> <span class="o">=</span> <span class="s">&quot;relay2-udp&quot;</span>
+<span class="na">bind-addr</span> <span class="o">=</span> <span class="s">&quot;0.0.0.0:9096&quot;</span>
+<span class="na">read-buffer</span> <span class="o">=</span> <span class="s">0 # default</span>
+<span class="na">output</span> <span class="o">=</span> <span class="s">[</span>
+<span class="s">    { name=&quot;influxdb1&quot;, location=&quot;37D7:8089&quot;, mtu=1024 },</span>
+<span class="s">    { name=&quot;influxdb2&quot;, location=&quot;37D6:8089&quot;, mtu=1024 },</span>
+<span class="err">]</span>
+</pre></div>
+
+
+<p>172.31.37.7</p>
+<div class="hlcode"><pre><span class="k">[[http]]</span>
+<span class="na">name</span> <span class="o">=</span> <span class="s">&quot;relay2-http&quot;</span>
+<span class="na">bind-addr</span> <span class="o">=</span> <span class="s">&quot;0.0.0.0:9096&quot;</span>
+<span class="na">output</span> <span class="o">=</span> <span class="s">[</span>
+<span class="s">    { name=&quot;influxdb1&quot;, location = &quot;http://37D7:8086/write&quot; },</span>
+<span class="s">    { name=&quot;influxdb2&quot;, location = &quot;http://37D6:8086/write&quot; },</span>
+<span class="err">]</span>
+
+<span class="k">[[udp]]</span>
+<span class="na">name</span> <span class="o">=</span> <span class="s">&quot;relay2-udp&quot;</span>
+<span class="na">bind-addr</span> <span class="o">=</span> <span class="s">&quot;0.0.0.0:9096&quot;</span>
+<span class="na">read-buffer</span> <span class="o">=</span> <span class="s">0 # default</span>
+<span class="na">output</span> <span class="o">=</span> <span class="s">[</span>
+<span class="s">    { name=&quot;influxdb1&quot;, location=&quot;37D7:8089&quot;, mtu=1024 },</span>
+<span class="s">    { name=&quot;influxdb2&quot;, location=&quot;37D6:8089&quot;, mtu=1024 },</span>
+<span class="err">]</span>
+</pre></div>
+
+
+<h1 id="keepalived">Keepalived  安装配置</h1>
+<p>yum 安装</p>
+<h2 id="_3">配置</h2>
+<h3 id="relay-http-write-influxdb-query">为 relay http 写入端 /write 和 InfluxDB 查询端 /query 配置心跳检查</h3>
+<p>先获取diggest, /write 端 类似</p>
+<div class="hlcode"><pre><span class="n">genhash</span> <span class="o">-</span><span class="n">s</span> <span class="mf">172.31.37.7</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8086</span> <span class="o">-</span><span class="n">u</span> <span class="o">/</span><span class="n">query</span>
+</pre></div>
+
+
+<h3 id="relay-http-write">主备切换检查每个 relay http /write 活性</h3>
+<div class="hlcode"><pre><span class="n">curl</span> <span class="n">http</span><span class="o">:</span><span class="c1">//localhost:9096/write &amp;&amp; exit 0 || exit 1</span>
+</pre></div>
+
+
+<h3 id="_4">完整配置文件</h3>
+<h4 id="keepalivedconf-on-17231376">keepalived.conf on 172.31.37.6</h4>
+<div class="hlcode"><pre><span class="o">!</span> <span class="n">Configuration</span> <span class="n">File</span> <span class="k">for</span> <span class="n">keepalived</span>
+
+<span class="n">global_defs</span> <span class="p">{</span>
+   <span class="n">notification_email</span> <span class="p">{</span>
+     <span class="n">wangyuxin0623</span><span class="err">@</span><span class="n">emoney</span><span class="p">.</span><span class="n">cn</span>
+   <span class="p">}</span>
+   <span class="n">notification_email_from</span> <span class="n">wangyuxin0623</span><span class="err">@</span><span class="n">emoney</span><span class="p">.</span><span class="n">cn</span>
+   <span class="n">smtp_server</span> <span class="n">smtp</span><span class="p">.</span><span class="n">emoney</span><span class="p">.</span><span class="n">cn</span>
+   <span class="n">smtp_connect_timeout</span> <span class="mi">30</span>
+   <span class="n">router_id</span> <span class="n">LVS_DEVEL</span>
+<span class="p">}</span>
+
+<span class="n">vrrp_script</span> <span class="n">chk_down</span> <span class="p">{</span>
+    <span class="n">script</span> <span class="s">&quot;curl http://localhost:9096/write &amp;&amp; exit 0 || exit 1&quot;</span>   <span class="err">#</span> <span class="n">http</span> <span class="n">response</span>
+    <span class="n">interval</span> <span class="mi">1</span>
+    <span class="n">weight</span> <span class="o">-</span><span class="mi">2</span>
+<span class="p">}</span>
+
+<span class="n">vrrp_instance</span> <span class="n">VI_1</span> <span class="p">{</span>
+    <span class="n">state</span> <span class="n">MASTER</span>
+    <span class="n">interface</span> <span class="n">eth0</span>
+    <span class="n">virtual_router_id</span> <span class="mi">51</span>
+    <span class="n">priority</span> <span class="mi">100</span>
+    <span class="n">advert_int</span> <span class="mi">1</span>
+    <span class="n">authentication</span> <span class="p">{</span>
+        <span class="n">auth_type</span> <span class="n">PASS</span>
+        <span class="n">auth_pass</span> <span class="n">emon</span>
+    <span class="p">}</span>
+    <span class="n">virtual_ipaddress</span> <span class="p">{</span>
+        <span class="mf">172.31.37.201</span>
+    <span class="p">}</span>
+    <span class="n">track_interface</span> <span class="p">{</span>
+        <span class="n">eth0</span>
+    <span class="p">}</span>
+    <span class="n">track_script</span> <span class="p">{</span>
+        <span class="n">chk_down</span>
+    <span class="p">}</span>
+    <span class="n">notify_master</span> <span class="s">&quot;/etc/keepalived/sendmail.py master&quot;</span>
+    <span class="n">notify_backup</span> <span class="s">&quot;/etc/keepalived/sendmail.py backup&quot;</span>
+    <span class="n">notify_fault</span> <span class="s">&quot;/etc/keepalived/sendmail.py fault&quot;</span>
+<span class="p">}</span>
+
+<span class="n">virtual_server</span> <span class="mf">172.31.37.201</span> <span class="mi">8086</span> <span class="p">{</span>
+    <span class="n">delay_loop</span> <span class="mi">6</span>
+    <span class="n">lb_algo</span> <span class="n">rr</span>
+    <span class="n">lb_kind</span> <span class="n">NAT</span>
+    <span class="n">nat_mask</span> <span class="mf">255.255.255.0</span>
+    <span class="n">persistence_timeout</span> <span class="mi">50</span>
+    <span class="n">protocol</span> <span class="n">TCP</span>
+
+    <span class="n">real_server</span> <span class="mf">172.31.37.6</span> <span class="mi">8086</span> <span class="p">{</span>
+        <span class="n">weight</span> <span class="mi">1</span>
+        <span class="n">HTTP_GET</span> <span class="p">{</span>
+            <span class="n">url</span> <span class="p">{</span>
+              <span class="n">path</span> <span class="o">/</span><span class="n">query</span>
+              <span class="n">digest</span> <span class="mf">9506e2817</span><span class="n">de5457b3ebe9bc36f33e444</span>
+            <span class="p">}</span>
+            <span class="n">connect_timeout</span> <span class="mi">3</span>
+            <span class="n">nb_get_retry</span> <span class="mi">3</span>
+            <span class="n">delay_before_retry</span> <span class="mi">3</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="n">real_server</span> <span class="mf">172.31.37.7</span> <span class="mi">8086</span> <span class="p">{</span>
+        <span class="n">weight</span> <span class="mi">1</span>
+        <span class="n">HTTP_GET</span> <span class="p">{</span>
+            <span class="n">url</span> <span class="p">{</span>
+              <span class="n">path</span> <span class="o">/</span><span class="n">query</span>
+              <span class="n">digest</span> <span class="mf">9506e2817</span><span class="n">de5457b3ebe9bc36f33e444</span>
+            <span class="p">}</span>
+            <span class="n">connect_timeout</span> <span class="mi">3</span>
+            <span class="n">nb_get_retry</span> <span class="mi">3</span>
+            <span class="n">delay_before_retry</span> <span class="mi">3</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">virtual_server</span> <span class="mf">172.31.37.201</span> <span class="mi">9096</span> <span class="p">{</span>
+    <span class="n">delay_loop</span> <span class="mi">6</span>
+    <span class="n">lb_algo</span> <span class="n">rr</span>
+    <span class="n">lb_kind</span> <span class="n">NAT</span>
+    <span class="n">nat_mask</span> <span class="mf">255.255.255.0</span>
+    <span class="n">persistence_timeout</span> <span class="mi">50</span>
+    <span class="n">protocol</span> <span class="n">TCP</span>
+
+    <span class="n">real_server</span> <span class="mf">172.31.37.6</span> <span class="mi">9096</span> <span class="p">{</span>
+        <span class="n">weight</span> <span class="mi">1</span>
+        <span class="n">HTTP_GET</span> <span class="p">{</span>
+            <span class="n">url</span> <span class="p">{</span>
+              <span class="n">path</span> <span class="o">/</span><span class="n">write</span>
+              <span class="n">digest</span> <span class="mf">8f</span><span class="n">a2fa624e3dd3163f007e7acfab9d46</span>
+            <span class="p">}</span>
+            <span class="n">connect_timeout</span> <span class="mi">3</span>
+            <span class="n">nb_get_retry</span> <span class="mi">3</span>
+            <span class="n">delay_before_retry</span> <span class="mi">3</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="n">real_server</span> <span class="mf">172.31.37.7</span> <span class="mi">9096</span> <span class="p">{</span>
+        <span class="n">weight</span> <span class="mi">1</span>
+        <span class="n">HTTP_GET</span> <span class="p">{</span>
+            <span class="n">url</span> <span class="p">{</span>
+              <span class="n">path</span> <span class="o">/</span><span class="n">write</span>
+              <span class="n">digest</span> <span class="mf">8f</span><span class="n">a2fa624e3dd3163f007e7acfab9d46</span>
+            <span class="p">}</span>
+            <span class="n">connect_timeout</span> <span class="mi">3</span>
+            <span class="n">nb_get_retry</span> <span class="mi">3</span>
+            <span class="n">delay_before_retry</span> <span class="mi">3</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h4 id="keepalivedconf-on-17231377">keepalived.conf on 172.31.37.7</h4>
+<p>只有 vrrp_instance VI_1 段两处不同</p>
+<div class="hlcode"><pre>    <span class="n">state</span> <span class="n">BACKUP</span>
+    <span class="p">...</span>
+    <span class="n">priority</span> <span class="mi">99</span>
+</pre></div>
+
+
+<h3 id="sendmailpy">通知邮件脚本 sendmail.py 参考</h3>
+<div class="hlcode"><pre><span class="kn">import</span> <span class="nn">smtplib</span>
+<span class="kn">from</span> <span class="nn">email.mime.text</span> <span class="kn">import</span> <span class="n">MIMEText</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="n">smtp_server</span> <span class="o">=</span> <span class="s">&#39;smtp.emoney.cn&#39;</span>
+<span class="n">user</span> <span class="o">=</span> <span class="s">&#39;baoyifeng@emoney.cn&#39;</span>
+<span class="n">password</span> <span class="o">=</span> <span class="s">&#39;*******&#39;</span>
+<span class="n">mail_from</span> <span class="o">=</span> <span class="s">&#39;baoyifeng@emoney.cn&#39;</span>
+<span class="n">display_from</span> <span class="o">=</span> <span class="s">&#39;keepalive_influx&lt;{0}&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mail_from</span><span class="p">)</span>
+<span class="n">mail_to</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s">&quot;wangyuxin0623@emoney.cn&quot;</span><span class="p">,</span>
+    <span class="s">&quot;lostsummer@gmail.com&quot;</span>
+<span class="p">]</span>
+<span class="n">vip</span> <span class="o">=</span> <span class="s">&#39;172.31.37.201&#39;</span>
+
+<span class="k">def</span> <span class="nf">send_mail</span><span class="p">(</span><span class="n">mail_to</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="n">MIMEText</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">_subtype</span><span class="o">=</span><span class="s">&#39;plain&#39;</span><span class="p">,</span> <span class="n">_charset</span><span class="o">=</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="n">msg</span><span class="p">[</span><span class="s">&#39;Subject&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">subject</span>
+    <span class="n">msg</span><span class="p">[</span><span class="s">&#39;From&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">display_from</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">smtp</span> <span class="o">=</span> <span class="n">smtplib</span><span class="o">.</span><span class="n">SMTP</span><span class="p">()</span>
+        <span class="n">smtp</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">smtp_server</span><span class="p">)</span>
+        <span class="n">smtp</span><span class="o">.</span><span class="n">login</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span>
+        <span class="n">smtp</span><span class="o">.</span><span class="n">sendmail</span><span class="p">(</span><span class="n">mail_from</span><span class="p">,</span> <span class="n">mail_to</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">as_string</span><span class="p">())</span>
+        <span class="n">smtp</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&#39;send ok&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">True</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">senderr</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="k">print</span> <span class="n">senderr</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;less arg!&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">stat</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">stat</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&quot;master&quot;</span><span class="p">,</span> <span class="s">&quot;backup&quot;</span><span class="p">,</span> <span class="s">&quot;fault&quot;</span><span class="p">]:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;error arg!&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">hostip</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span>
+        <span class="s">&quot;ifconfig eth0 | awk &#39;/inet /{print $2}&#39;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">readlines</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s">&#39;%Y-%m-</span><span class="si">%d</span><span class="s"> </span><span class="si">%X</span><span class="s">&#39;</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">localtime</span><span class="p">())</span>
+
+    <span class="n">subject</span> <span class="o">=</span> <span class="s">&quot;{0} is change to be {1}, {2} floating&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">hostip</span><span class="p">,</span> <span class="n">stat</span><span class="p">,</span> <span class="n">vip</span><span class="p">)</span>
+
+    <span class="n">content</span> <span class="o">=</span> <span class="s">&quot;{0} :</span><span class="se">\n</span><span class="s">vrrp transition, {1} changed to be {2}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">timestamp</span><span class="p">,</span> <span class="n">hostip</span><span class="p">,</span> <span class="n">stat</span><span class="p">)</span>
+
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="n">send_mail</span><span class="p">(</span><span class="n">mail_to</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">content</span><span class="p">)</span> <span class="k">else</span> <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <div class="footer-left">
+        <p>
+        Copyright © 2017 Lostsummer.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://git.coding.net/tankywoo/yasimple_x2.git" target="_blank">YASimple_X2</a>.
+        </p>
+      </div> <!-- end footer-left -->
+      <div class="footer-right">
+        <p>Site Generated 2017-05-12 16:09:35</p>
+      </div> <!-- end footer-right -->
+    </div>
+
+    
+    
+  </body>
+</html>

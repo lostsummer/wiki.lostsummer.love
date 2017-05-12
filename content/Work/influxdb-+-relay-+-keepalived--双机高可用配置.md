@@ -39,14 +39,14 @@ date: 2017-05-12 16:05
 
 ## Relay 配置
 
-relay http://0.0.0.0:9096/write   -> InfluxDB http://0.0.0.0:8086/write
-relay udp 0.0.0.0:9096              -> InfluxDB udp 0.0.0.0:8089
+- relay http://0.0.0.0:9096/write   -> InfluxDB http://0.0.0.0:8086/write
+- relay udp 0.0.0.0:9096            -> InfluxDB udp 0.0.0.0:8089
 
 
 
 172.31.37.6
 
-```
+```toml
 [[http]]
 name = "relay2-http"
 bind-addr = "0.0.0.0:9096"
@@ -67,7 +67,7 @@ output = [
 
 172.31.37.7
 
-```
+```toml
 [[http]]
 name = "relay2-http"
 bind-addr = "0.0.0.0:9096"
@@ -87,31 +87,39 @@ output = [
 ```
 
 
-# Keepalived  安装配置
+# Keepalived 安装配置
 
 yum 安装
 
 ## 配置
 
-### 为 relay http 写入端 /write 和 InfluxDB 查询端 /query 配置心跳检查
+### 配置心跳检查
 
-先获取diggest, /write 端 类似
+为 relay /write 和 influxdb /query 分别配置 virtual_server  
 
-```
+先在每台主机上获取diggest, /write 端 类似
+
+```shell
 genhash -s 172.31.37.7 -p 8086 -u /query
 ```
 
-### 主备切换检查每个 relay http /write 活性
+其他详细部分见后面完整配置文件
 
-```
+### 主备切换活性检查
+
+以 relay /write 为主，暂时只检查它
+
+```shell
 curl http://localhost:9096/write && exit 0 || exit 1
 ```
+
+其他详细部分见后面完整配置文件
 
 ### 完整配置文件
 
 #### keepalived.conf on 172.31.37.6
 
-```
+```config
 ! Configuration File for keepalived
 
 global_defs {
@@ -265,9 +273,9 @@ def send_mail(mail_to, subject, content):
         smtp.close()
         print('send ok')
         return True
-    except Exception, e:
+    except Exception as e:
         senderr = str(e)
-        print senderr
+        print(senderr)
         return False
 
 

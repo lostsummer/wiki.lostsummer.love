@@ -36,11 +36,11 @@
 <li><a href="#relay">Relay 配置</a></li>
 </ul>
 </li>
-<li><a href="#keepalived">Keepalived  安装配置</a><ul>
+<li><a href="#keepalived">Keepalived 安装配置</a><ul>
 <li><a href="#_3">配置</a><ul>
-<li><a href="#relay-http-write-influxdb-query">为 relay http 写入端 /write 和 InfluxDB 查询端 /query 配置心跳检查</a></li>
-<li><a href="#relay-http-write">主备切换检查每个 relay http /write 活性</a></li>
-<li><a href="#_4">完整配置文件</a><ul>
+<li><a href="#_4">配置心跳检查</a></li>
+<li><a href="#_5">主备切换活性检查</a></li>
+<li><a href="#_6">完整配置文件</a><ul>
 <li><a href="#keepalivedconf-on-17231376">keepalived.conf on 172.31.37.6</a></li>
 <li><a href="#keepalivedconf-on-17231377">keepalived.conf on 172.31.37.7</a></li>
 </ul>
@@ -75,8 +75,10 @@
 <p>相比较上面官方给出的方案，取消了 LB，使用 Keepalived</p>
 <p><img alt="myrelay" src="http://ooyi4zkat.bkt.clouddn.com/myrelay.png" /></p>
 <h2 id="relay">Relay 配置</h2>
-<p>relay http://0.0.0.0:9096/write   -&gt; InfluxDB http://0.0.0.0:8086/write
-relay udp 0.0.0.0:9096              -&gt; InfluxDB udp 0.0.0.0:8089</p>
+<ul>
+<li>relay http://0.0.0.0:9096/write   -&gt; InfluxDB http://0.0.0.0:8086/write</li>
+<li>relay udp 0.0.0.0:9096            -&gt; InfluxDB udp 0.0.0.0:8089</li>
+</ul>
 <p>172.31.37.6</p>
 <div class="hlcode"><pre><span class="k">[[http]]</span>
 <span class="na">name</span> <span class="o">=</span> <span class="s">&quot;relay2-http&quot;</span>
@@ -117,21 +119,25 @@ relay udp 0.0.0.0:9096              -&gt; InfluxDB udp 0.0.0.0:8089</p>
 </pre></div>
 
 
-<h1 id="keepalived">Keepalived  安装配置</h1>
+<h1 id="keepalived">Keepalived 安装配置</h1>
 <p>yum 安装</p>
 <h2 id="_3">配置</h2>
-<h3 id="relay-http-write-influxdb-query">为 relay http 写入端 /write 和 InfluxDB 查询端 /query 配置心跳检查</h3>
-<p>先获取diggest, /write 端 类似</p>
+<h3 id="_4">配置心跳检查</h3>
+<p>为 relay /write 和 influxdb /query 分别配置 virtual_server  </p>
+<p>先在每台主机上获取diggest, /write 端 类似</p>
 <div class="hlcode"><pre><span class="n">genhash</span> <span class="o">-</span><span class="n">s</span> <span class="mf">172.31.37.7</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8086</span> <span class="o">-</span><span class="n">u</span> <span class="o">/</span><span class="n">query</span>
 </pre></div>
 
 
-<h3 id="relay-http-write">主备切换检查每个 relay http /write 活性</h3>
+<p>其他详细部分见后面完整配置文件</p>
+<h3 id="_5">主备切换活性检查</h3>
+<p>以 relay /write 为主，暂时只检查它</p>
 <div class="hlcode"><pre><span class="n">curl</span> <span class="n">http</span><span class="o">:</span><span class="c1">//localhost:9096/write &amp;&amp; exit 0 || exit 1</span>
 </pre></div>
 
 
-<h3 id="_4">完整配置文件</h3>
+<p>其他详细部分见后面完整配置文件</p>
+<h3 id="_6">完整配置文件</h3>
 <h4 id="keepalivedconf-on-17231376">keepalived.conf on 172.31.37.6</h4>
 <div class="hlcode"><pre><span class="o">!</span> <span class="n">Configuration</span> <span class="n">File</span> <span class="k">for</span> <span class="n">keepalived</span>
 
@@ -284,9 +290,9 @@ relay udp 0.0.0.0:9096              -&gt; InfluxDB udp 0.0.0.0:8089</p>
         <span class="n">smtp</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="k">print</span><span class="p">(</span><span class="s">&#39;send ok&#39;</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">True</span>
-    <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">senderr</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-        <span class="k">print</span> <span class="n">senderr</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">senderr</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">False</span>
 
 
@@ -324,7 +330,7 @@ relay udp 0.0.0.0:9096              -&gt; InfluxDB udp 0.0.0.0:8089</p>
         </p>
       </div> <!-- end footer-left -->
       <div class="footer-right">
-        <p>Site Generated 2017-05-12 16:09:35</p>
+        <p>Site Generated 2017-05-12 16:32:52</p>
       </div> <!-- end footer-right -->
     </div>
 

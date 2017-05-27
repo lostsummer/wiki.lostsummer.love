@@ -1,0 +1,316 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>CentOS7 64位 上安装 MySql Community 以及配置主备高可用 - Wiki of Lostsummer</title>
+    <meta name="keywords" content="c, python, go, docker, influxdb"/>
+    <meta name="description" content="My Personal wiki."/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Wiki of Lostsummer</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#Operation">Operation</a>
+    &nbsp;&#187;&nbsp;CentOS7 64位 上安装 MySql Community 以及配置主备高可用
+    <span class="updated">Updated&nbsp;
+    2017-05-27 11:41
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#rpm">安装 (RPM)</a><ul>
+<li><a href="#1">1. 包准备</a></li>
+<li><a href="#2">2. 冲突预处理</a></li>
+<li><a href="#3-rpm">3. 依次安装 rpm 包</a></li>
+<li><a href="#4">4. 初始化</a></li>
+<li><a href="#5">5. 改变属主 &amp; 启动数据库</a></li>
+<li><a href="#6">6. 查看临时密码 &amp; 测试登录</a></li>
+<li><a href="#7">7. 改密码</a></li>
+</ul>
+</li>
+<li><a href="#_1">配置主备</a><ul>
+<li><a href="#1_1">1. 修改配置文件：</a></li>
+<li><a href="#2-replication">2. 创建Replication用户</a></li>
+<li><a href="#3-mysql-bin-log">3. 查看两台主机的mysql bin log位置</a></li>
+<li><a href="#4-slave-replication">4. 开始设置 Slave Replication</a></li>
+<li><a href="#5_1">5. 查看两台主机是否设置成功</a></li>
+</ul>
+</li>
+<li><a href="#_2">开启半同步复制</a><ul>
+<li><a href="#1_2">1. 加载插件</a></li>
+<li><a href="#2_1">2. 检查插件是否加载成功</a></li>
+<li><a href="#3">3. 启动半同步复制</a></li>
+<li><a href="#4-slaveio">4. 重启slave上的IO线程</a></li>
+<li><a href="#5_2">5. 查看半同步是否在运行</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h1 id="rpm">安装 (RPM)</h1>
+<h2 id="1">1. 包准备</h2>
+<p>下载 <a href="https://dev.mysql.com/downloads/file/?id=469456">mysql-5.7.18-1.el7.x86_64.rpm-bundle.tar</a></p>
+<p>解压后有多个rpm包，其实冗余。我们只需要</p>
+<div class="hlcode"><pre><span class="o">-</span> <span class="n">mysql</span><span class="o">-</span><span class="n">community</span><span class="o">-</span><span class="n">common</span><span class="o">-</span><span class="mf">5.7.18</span><span class="o">-</span><span class="mf">1.</span><span class="n">el7</span><span class="p">.</span><span class="n">x86_64</span><span class="p">.</span><span class="n">rpm</span>
+<span class="o">-</span> <span class="n">mysql</span><span class="o">-</span><span class="n">community</span><span class="o">-</span><span class="n">libs</span><span class="o">-</span><span class="mf">5.7.18</span><span class="o">-</span><span class="mf">1.</span><span class="n">el7</span><span class="p">.</span><span class="n">x86_64</span><span class="p">.</span><span class="n">rpm</span>
+<span class="o">-</span> <span class="n">mysql</span><span class="o">-</span><span class="n">community</span><span class="o">-</span><span class="n">server</span><span class="o">-</span><span class="mf">5.7.18</span><span class="o">-</span><span class="mf">1.</span><span class="n">el7</span><span class="p">.</span><span class="n">x86_64</span><span class="p">.</span><span class="n">rpm</span> 
+<span class="o">-</span> <span class="n">mysql</span><span class="o">-</span><span class="n">community</span><span class="o">-</span><span class="n">client</span><span class="o">-</span><span class="mf">5.7.18</span><span class="o">-</span><span class="mf">1.</span><span class="n">el7</span><span class="p">.</span><span class="n">x86_64</span><span class="p">.</span><span class="n">rpm</span>
+</pre></div>
+
+
+<p>你也可以在官网分别单独下载它们</p>
+<h2 id="2">2. 冲突预处理</h2>
+<p>系统已安装的 mariadb 相关组件会冲突，先卸载</p>
+<div class="hlcode"><pre><span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="n">localhost</span> <span class="n">packages</span><span class="p">]</span><span class="err">#</span> <span class="n">rpm</span> <span class="o">-</span><span class="n">qa</span><span class="o">|</span><span class="n">grep</span> <span class="n">mariadb</span>
+<span class="n">mariadb</span><span class="o">-</span><span class="n">libs</span><span class="o">-</span><span class="mf">5.5.44</span><span class="o">-</span><span class="mf">2.</span><span class="n">el7</span><span class="p">.</span><span class="n">centos</span><span class="p">.</span><span class="n">x86_64</span>
+<span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="n">localhost</span> <span class="n">packages</span><span class="p">]</span><span class="err">#</span> <span class="n">rpm</span> <span class="o">-</span><span class="n">e</span> <span class="o">--</span><span class="n">nodeps</span> <span class="n">mariadb</span><span class="o">-</span><span class="n">libs</span>
+</pre></div>
+
+
+<h2 id="3-rpm">3. 依次安装 rpm 包</h2>
+<div class="hlcode"><pre>rpm -ivh  mysql-community-common-5.7.18-1.el7.x86_64.rpm
+rpm -ivh mysql-community-libs-5.7.18-1.el7.x86_64.rpm                      <span class="c"># 依赖于common</span>
+rpm -ivh mysql-community-client-5.7.18-1.el7.x86_64.rpm                    <span class="c"># 依赖于libs</span>
+rpm -ivh mysql-community-server-5.7.18-1.el7.x86_64.rpm                    <span class="c"># 依赖于client, common</span>
+</pre></div>
+
+
+<h2 id="4">4. 初始化</h2>
+<div class="hlcode"><pre><span class="n">mysqld</span> <span class="o">--</span><span class="n">initialize</span>
+</pre></div>
+
+
+<h2 id="5">5. 改变属主 &amp; 启动数据库</h2>
+<div class="hlcode"><pre><span class="n">chown</span> <span class="n">mysql</span><span class="o">:</span><span class="n">mysql</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">mysql</span> <span class="o">-</span><span class="n">R</span>  
+<span class="n">systemctl</span> <span class="n">start</span> <span class="n">mysqld</span><span class="p">.</span><span class="n">service</span>
+</pre></div>
+
+
+<h2 id="6">6. 查看临时密码 &amp; 测试登录</h2>
+<div class="hlcode"><pre><span class="n">grep</span> <span class="err">&#39;</span><span class="n">A</span> <span class="n">temporary</span> <span class="n">password</span><span class="err">&#39;</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">log</span><span class="o">/</span><span class="n">mysqld</span><span class="p">.</span><span class="n">log</span>
+<span class="n">mysql</span> <span class="o">-</span><span class="n">uroot</span> <span class="o">-</span><span class="n">p</span>
+</pre></div>
+
+
+<p>输入密码测试可以成功登录。</p>
+<h2 id="7">7. 改密码</h2>
+<div class="hlcode"><pre><span class="n">mysqladmin</span> <span class="o">-</span><span class="n">u</span> <span class="n">root</span> <span class="o">-</span><span class="n">p</span> <span class="n">password</span> <span class="n">xxxxxx</span>
+</pre></div>
+
+
+<p>上面 xxxxxx 为新密码，出现 password: 提示符后输入老密码后确认回车，改密成功</p>
+<h1 id="_1">配置主备</h1>
+<p>主机地址：</p>
+<ul>
+<li>A 主机： 192.168.240.28</li>
+<li>B 主机：192.168.240.29</li>
+</ul>
+<h2 id="1_1">1. 修改配置文件：</h2>
+<p>vi /etc/my.conf</p>
+<p>A 主机</p>
+<div class="hlcode"><pre><span class="n">log</span><span class="o">-</span><span class="n">bin</span><span class="o">=</span><span class="n">mysql</span><span class="o">-</span><span class="n">bin</span>
+<span class="n">server</span><span class="o">-</span><span class="n">id</span><span class="o">=</span><span class="mi">28</span>
+</pre></div>
+
+
+<p>B 主机</p>
+<div class="hlcode"><pre><span class="n">log</span><span class="o">-</span><span class="n">bin</span><span class="o">=</span><span class="n">mysql</span><span class="o">-</span><span class="n">bin</span>
+<span class="n">server</span><span class="o">-</span><span class="n">id</span><span class="o">=</span><span class="mi">29</span>
+</pre></div>
+
+
+<h2 id="2-replication">2. 创建Replication用户</h2>
+<p>A主机上执行如下命令：</p>
+<div class="hlcode"><pre><span class="n">create</span> <span class="n">user</span> <span class="err">&#39;</span><span class="n">repl</span><span class="sc">&#39;@&#39;</span><span class="o">%</span><span class="err">&#39;</span> <span class="n">identified</span> <span class="n">by</span> <span class="err">&#39;</span><span class="mi">12345678</span><span class="err">&#39;</span><span class="p">;</span>
+
+<span class="n">GRANT</span> <span class="n">REPLICATION</span> <span class="n">SLAVE</span> <span class="n">ON</span> <span class="o">*</span><span class="p">.</span><span class="o">*</span> <span class="n">TO</span> <span class="err">&#39;</span><span class="n">repl</span><span class="sc">&#39;@&#39;</span><span class="o">%</span><span class="err">&#39;</span><span class="p">;</span>
+
+<span class="n">grant</span> <span class="n">replication</span> <span class="n">client</span><span class="p">,</span><span class="n">replication</span> <span class="n">slave</span> <span class="n">on</span> <span class="o">*</span><span class="p">.</span><span class="o">*</span> <span class="n">to</span> <span class="err">&#39;</span><span class="n">repl</span><span class="sc">&#39;@&#39;</span><span class="mf">192.168.240.29</span><span class="err">&#39;</span> <span class="n">identified</span> <span class="n">by</span> <span class="err">&#39;</span><span class="mi">12345678</span><span class="err">&#39;</span><span class="p">;</span>
+</pre></div>
+
+
+<p>B主机上执行如下命令：</p>
+<div class="hlcode"><pre><span class="n">create</span> <span class="n">user</span> <span class="err">&#39;</span><span class="n">repl</span><span class="sc">&#39;@&#39;</span><span class="o">%</span><span class="err">&#39;</span> <span class="n">identified</span> <span class="n">by</span> <span class="err">&#39;</span><span class="mi">12345678</span><span class="err">&#39;</span><span class="p">;</span>
+
+<span class="n">GRANT</span> <span class="n">REPLICATION</span> <span class="n">SLAVE</span> <span class="n">ON</span> <span class="o">*</span><span class="p">.</span><span class="o">*</span> <span class="n">TO</span> <span class="err">&#39;</span><span class="n">repl</span><span class="sc">&#39;@&#39;</span><span class="o">%</span><span class="err">&#39;</span><span class="p">;</span>
+
+<span class="n">grant</span> <span class="n">replication</span> <span class="n">client</span><span class="p">,</span><span class="n">replication</span> <span class="n">slave</span> <span class="n">on</span> <span class="o">*</span><span class="p">.</span><span class="o">*</span> <span class="n">to</span> <span class="err">&#39;</span><span class="n">repl</span><span class="sc">&#39;@&#39;</span><span class="mf">192.168.240.28</span><span class="err">&#39;</span> <span class="n">identified</span> <span class="n">by</span> <span class="err">&#39;</span><span class="mi">12345678</span><span class="err">&#39;</span><span class="p">;</span>
+</pre></div>
+
+
+<h2 id="3-mysql-bin-log">3. 查看两台主机的mysql bin log位置</h2>
+<p>首先将两台主机mysql中的表锁定</p>
+<div class="hlcode"><pre><span class="n">FLUSH</span> <span class="n">TABLES</span> <span class="n">WITH</span> <span class="n">READ</span> <span class="n">LOCK</span><span class="p">;</span>
+</pre></div>
+
+
+<p>FLUSH TABLES WITH READ LOCK; 代表锁定表，禁止所有操作。防止bin log位置发生变化。
+查看A主机bin log位置。</p>
+<div class="hlcode"><pre><span class="n">SHOW</span> <span class="n">MASTER</span> <span class="n">STATUS</span><span class="p">;</span>
+</pre></div>
+
+
+<p>A主机结果</p>
+<div class="hlcode"><pre><span class="o">+------------------+----------+--------------+------------------+-------------------+</span>
+<span class="o">|</span> <span class="n">File</span>             <span class="o">|</span> <span class="n">Position</span> <span class="o">|</span> <span class="n">Binlog_Do_DB</span> <span class="o">|</span> <span class="n">Binlog_Ignore_DB</span> <span class="o">|</span> <span class="n">Executed_Gtid_Set</span> <span class="o">|</span>
+<span class="o">+------------------+----------+--------------+------------------+-------------------+</span>
+<span class="o">|</span> <span class="n">mysql</span><span class="o">-</span><span class="n">bin</span><span class="mf">.000002</span> <span class="o">|</span>      <span class="mi">154</span> <span class="o">|</span>              <span class="o">|</span>                  <span class="o">|</span>                   <span class="o">|</span>
+<span class="o">+------------------+----------+--------------+------------------+-------------------+</span>
+</pre></div>
+
+
+<p>B主机结果</p>
+<div class="hlcode"><pre><span class="o">+------------------+----------+--------------+------------------+-------------------+</span>
+<span class="o">|</span> <span class="n">File</span>             <span class="o">|</span> <span class="n">Position</span> <span class="o">|</span> <span class="n">Binlog_Do_DB</span> <span class="o">|</span> <span class="n">Binlog_Ignore_DB</span> <span class="o">|</span> <span class="n">Executed_Gtid_Set</span> <span class="o">|</span>
+<span class="o">+------------------+----------+--------------+------------------+-------------------+</span>
+<span class="o">|</span> <span class="n">mysql</span><span class="o">-</span><span class="n">bin</span><span class="mf">.000002</span> <span class="o">|</span>      <span class="mi">911</span> <span class="o">|</span>              <span class="o">|</span>                  <span class="o">|</span>                   <span class="o">|</span>
+<span class="o">+------------------+----------+--------------+------------------+-------------------+</span>
+</pre></div>
+
+
+<p>记录下A主机结果，和B主机结果
+然后再解除两台主机mysql table的锁定</p>
+<div class="hlcode"><pre><span class="n">unlock</span> <span class="n">tables</span><span class="p">;</span>
+</pre></div>
+
+
+<h2 id="4-slave-replication">4. 开始设置 Slave Replication</h2>
+<p>A主机执行如下命令：</p>
+<div class="hlcode"><pre><span class="n">STOP</span> <span class="n">SLAVE</span><span class="p">;</span>
+<span class="n">CHANGE</span> <span class="n">MASTER</span> <span class="n">TO</span> <span class="n">MASTER_HOST</span> <span class="o">=</span> <span class="err">&#39;</span><span class="mf">192.168.240.29</span><span class="err">&#39;</span><span class="p">,</span> <span class="n">MASTER_USER</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">repl</span><span class="err">&#39;</span><span class="p">,</span>
+<span class="n">MASTER_PASSWORD</span> <span class="o">=</span> <span class="err">&#39;</span><span class="mi">12345678</span><span class="err">&#39;</span><span class="p">,</span> <span class="n">MASTER_LOG_FILE</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">mysql</span><span class="o">-</span><span class="n">bin</span><span class="mf">.000002</span><span class="err">&#39;</span><span class="p">,</span>
+<span class="n">MASTER_LOG_POS</span> <span class="o">=</span> <span class="mi">911</span><span class="p">;</span>
+<span class="n">START</span> <span class="n">SLAVE</span><span class="p">;</span>
+</pre></div>
+
+
+<p>B主机执行如下命令：</p>
+<div class="hlcode"><pre><span class="n">STOP</span> <span class="n">SLAVE</span><span class="p">;</span>
+<span class="n">CHANGE</span> <span class="n">MASTER</span> <span class="n">TO</span> <span class="n">MASTER_HOST</span> <span class="o">=</span> <span class="err">&#39;</span><span class="mf">192.168.240.28</span><span class="err">&#39;</span><span class="p">,</span> <span class="n">MASTER_USER</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">repl</span><span class="err">&#39;</span><span class="p">,</span>
+<span class="n">MASTER_PASSWORD</span> <span class="o">=</span> <span class="err">&#39;</span><span class="mi">12345678</span><span class="err">&#39;</span><span class="p">,</span> <span class="n">MASTER_LOG_FILE</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">mysql</span><span class="o">-</span><span class="n">bin</span><span class="mf">.000002</span><span class="err">&#39;</span><span class="p">,</span>
+<span class="n">MASTER_LOG_POS</span> <span class="o">=</span> <span class="mi">154</span><span class="p">;</span>
+<span class="n">START</span> <span class="n">SLAVE</span><span class="p">;</span>
+</pre></div>
+
+
+<h2 id="5_1">5. 查看两台主机是否设置成功</h2>
+<div class="hlcode"><pre><span class="n">mysql</span><span class="o">&gt;</span> <span class="n">show</span> <span class="n">slave</span> <span class="n">status</span> <span class="err">\</span><span class="n">G</span>
+<span class="o">***************************</span> <span class="mf">1.</span> <span class="n">row</span> <span class="o">***************************</span>
+               <span class="nl">Slave_IO_State:</span> <span class="n">Waiting</span> <span class="k">for</span> <span class="n">master</span> <span class="n">to</span> <span class="n">send</span> <span class="n">event</span>
+                  <span class="nl">Master_Host:</span> <span class="mf">192.168.240.29</span>
+                  <span class="nl">Master_User:</span> <span class="n">repl</span>
+                  <span class="nl">Master_Port:</span> <span class="mi">3306</span>
+                <span class="nl">Connect_Retry:</span> <span class="mi">60</span>
+              <span class="nl">Master_Log_File:</span> <span class="n">mysql</span><span class="o">-</span><span class="n">bin</span><span class="mf">.000002</span>
+          <span class="nl">Read_Master_Log_Pos:</span> <span class="mi">1343</span>
+               <span class="nl">Relay_Log_File:</span> <span class="n">localhost</span><span class="o">-</span><span class="n">relay</span><span class="o">-</span><span class="n">bin</span><span class="mf">.000006</span>
+                <span class="nl">Relay_Log_Pos:</span> <span class="mi">320</span>
+        <span class="nl">Relay_Master_Log_File:</span> <span class="n">mysql</span><span class="o">-</span><span class="n">bin</span><span class="mf">.000002</span>
+             <span class="nl">Slave_IO_Running:</span> <span class="n">Yes</span>
+            <span class="nl">Slave_SQL_Running:</span> <span class="n">Yes</span>
+<span class="p">...</span>
+</pre></div>
+
+
+<p>如果两台主机Slave_IO_Running 和Slave_SQL_Running都为YES代表设置成功。可以进行数据库操作了。</p>
+<h1 id="_2">开启半同步复制</h1>
+<p>要想使用半同步复制，必须满足以下几个条件（按照之前的说明安装就会都满足）：</p>
+<ol>
+<li>MySQL 5.5及以上版本</li>
+<li>变量have_dynamic_loading为YES</li>
+<li>异步复制已经存在</li>
+</ol>
+<h2 id="1_2">1. 加载插件</h2>
+<p>两台服务器上都运行</p>
+<div class="hlcode"><pre><span class="n">mysql</span><span class="o">&gt;</span> <span class="n">INSTALL</span> <span class="n">PLUGIN</span> <span class="n">rpl_semi_sync_master</span> <span class="n">SONAME</span> <span class="err">&#39;</span><span class="n">semisync_master</span><span class="p">.</span><span class="n">so</span><span class="err">&#39;</span><span class="p">;</span>        <span class="err">#</span> <span class="err">作为主</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="n">INSTALL</span> <span class="n">PLUGIN</span> <span class="n">rpl_semi_sync_slave</span> <span class="n">SONAME</span> <span class="err">&#39;</span><span class="n">semisync_slave</span><span class="p">.</span><span class="n">so</span><span class="err">&#39;</span><span class="p">;</span>          <span class="err">#</span> <span class="err">作为从</span>
+</pre></div>
+
+
+<h2 id="2_1">2. 检查插件是否加载成功</h2>
+<div class="hlcode"><pre><span class="n">mysql</span><span class="o">&gt;</span> <span class="n">show</span> <span class="n">plugins</span> <span class="err">\</span><span class="n">G</span><span class="p">;</span>
+<span class="p">...</span>
+<span class="o">***************************</span> <span class="mf">45.</span> <span class="n">row</span> <span class="o">***************************</span>
+   <span class="nl">Name:</span> <span class="n">rpl_semi_sync_master</span>
+<span class="nl">Status:</span> <span class="n">ACTIVE</span>
+   <span class="nl">Type:</span> <span class="n">REPLICATION</span>
+<span class="nl">Library:</span> <span class="n">semisync_master</span><span class="p">.</span><span class="n">so</span>
+<span class="nl">License:</span> <span class="n">GPL</span>
+<span class="o">***************************</span> <span class="mf">46.</span> <span class="n">row</span> <span class="o">***************************</span>
+   <span class="nl">Name:</span> <span class="n">rpl_semi_sync_slave</span>
+<span class="nl">Status:</span> <span class="n">ACTIVE</span>
+   <span class="nl">Type:</span> <span class="n">REPLICATION</span>
+<span class="nl">Library:</span> <span class="n">semisync_slave</span><span class="p">.</span><span class="n">so</span>
+<span class="nl">License:</span> <span class="n">GPL</span>
+</pre></div>
+
+
+<h2 id="3">3. 启动半同步复制</h2>
+<p>两台服务器上</p>
+<div class="hlcode"><pre><span class="n">mysql</span><span class="o">&gt;</span> <span class="n">SET</span> <span class="n">GLOBAL</span> <span class="n">rpl_semi_sync_master_enabled</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="n">SET</span> <span class="n">GLOBAL</span> <span class="n">rpl_semi_sync_slave_enabled</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+</pre></div>
+
+
+<h2 id="4-slaveio">4. 重启slave上的IO线程</h2>
+<p>两台服务器上</p>
+<div class="hlcode"><pre><span class="n">mysql</span><span class="o">&gt;</span> <span class="n">STOP</span> <span class="n">SLAVE</span> <span class="n">IO_THREAD</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="n">START</span> <span class="n">SLAVE</span> <span class="n">IO_THREAD</span><span class="p">;</span>
+</pre></div>
+
+
+<h2 id="5_2">5. 查看半同步是否在运行</h2>
+<p>两台服务器上都执行下面的验证</p>
+<p>验证 master</p>
+<div class="hlcode"><pre><span class="n">mysql</span><span class="o">&gt;</span>  <span class="n">show</span> <span class="n">status</span> <span class="n">like</span> <span class="err">&#39;</span><span class="n">Rpl_semi_sync_master_status</span><span class="err">&#39;</span><span class="p">;</span>
+<span class="o">+-----------------------------+-------+</span>
+<span class="o">|</span> <span class="n">Variable_name</span>               <span class="o">|</span> <span class="n">Value</span> <span class="o">|</span>
+<span class="o">+-----------------------------+-------+</span>
+<span class="o">|</span> <span class="n">Rpl_semi_sync_master_status</span> <span class="o">|</span> <span class="n">ON</span>    <span class="o">|</span>
+<span class="o">+-----------------------------+-------+</span>
+</pre></div>
+
+
+<p>验证 slave</p>
+<div class="hlcode"><pre><span class="n">mysql</span><span class="o">&gt;</span> <span class="n">show</span> <span class="n">status</span> <span class="n">like</span> <span class="err">&#39;</span><span class="n">Rpl_semi_sync_slave_status</span><span class="err">&#39;</span><span class="p">;</span>
+<span class="o">+----------------------------+-------+</span>
+<span class="o">|</span> <span class="n">Variable_name</span>              <span class="o">|</span> <span class="n">Value</span> <span class="o">|</span>
+<span class="o">+----------------------------+-------+</span>
+<span class="o">|</span> <span class="n">Rpl_semi_sync_slave_status</span> <span class="o">|</span> <span class="n">ON</span>    <span class="o">|</span>
+<span class="o">+----------------------------+-------+</span>
+</pre></div>
+
+
+<p>这两个变量常用来监控主从是否运行在半同步复制模式下。
+至此，MySQL半同步复制搭建完毕。</p>
+  
+</div>
+    </div>
+    <div id="footer">
+      <div class="footer-left">
+        <p>
+        Copyright © 2017 Lostsummer.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://git.coding.net/tankywoo/yasimple_x2.git" target="_blank">YASimple_X2</a>.
+        </p>
+      </div> <!-- end footer-left -->
+      <div class="footer-right">
+        <p>Site Generated 2017-05-27 12:04:36</p>
+      </div> <!-- end footer-right -->
+    </div>
+
+    
+    
+  </body>
+</html>

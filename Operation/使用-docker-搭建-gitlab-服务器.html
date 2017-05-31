@@ -1,0 +1,122 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>使用 docker 搭建 gitlab 服务器 - Wiki of Lostsummer</title>
+    <meta name="keywords" content="c, python, go, docker, influxdb"/>
+    <meta name="description" content="My Personal wiki."/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Wiki of Lostsummer</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#Operation">Operation</a>
+    &nbsp;&#187;&nbsp;使用 docker 搭建 gitlab 服务器
+    <span class="updated">Updated&nbsp;
+    2017-05-31 16:45
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#0">0. 背景</a></li>
+<li><a href="#1-mysql">1. MySQL 安装</a></li>
+<li><a href="#2">2. 创建数据库和用户</a></li>
+<li><a href="#3-docker">3. 安装 docker</a></li>
+<li><a href="#4-docker-compose">4. docker-compose 编排</a></li>
+</ul>
+</div>
+<h1 id="0">0. 背景</h1>
+<p>快速部署，使用 docker，但数据库要求实体机服务。</p>
+<h1 id="1-mysql">1. MySQL 安装</h1>
+<p>参见<a href="http://wiki.lostsummer.love/Operation/centos7-64%E4%BD%8D-%E4%B8%8A%E5%AE%89%E8%A3%85-mysql-community-%E4%BB%A5%E5%8F%8A%E9%85%8D%E7%BD%AE%E4%B8%BB%E5%A4%87%E9%AB%98%E5%8F%AF%E7%94%A8.html">CentOS7 64位 上安装 MySql Community 以及配置主备高可用</a></p>
+<h1 id="2">2. 创建数据库和用户</h1>
+<div class="hlcode"><pre><span class="n">CREATE</span> <span class="n">USER</span> <span class="err">&#39;</span><span class="n">gitlab</span><span class="sc">&#39;@&#39;</span><span class="o">%</span><span class="err">&#39;</span> <span class="n">IDENTIFIED</span> <span class="n">BY</span> <span class="err">&#39;</span><span class="n">password</span><span class="err">&#39;</span><span class="p">;</span>
+<span class="n">CREATE</span> <span class="n">DATABASE</span> <span class="n">IF</span> <span class="n">NOT</span> <span class="n">EXISTS</span> <span class="err">`</span><span class="n">gitlabhq_production</span><span class="err">`</span> <span class="n">DEFAULT</span> <span class="n">CHARACTER</span> <span class="n">SET</span> <span class="err">`</span><span class="n">utf8</span><span class="err">`</span> <span class="n">COLLATE</span> <span class="err">`</span><span class="n">utf8_unicode_ci</span><span class="err">`</span><span class="p">;</span>
+<span class="n">GRANT</span> <span class="n">ALL</span> <span class="n">PRIVILEGES</span> <span class="n">ON</span> <span class="err">`</span><span class="n">gitlabhq_production</span><span class="err">`</span><span class="p">.</span><span class="o">*</span> <span class="n">TO</span> <span class="err">&#39;</span><span class="n">gitlab</span><span class="sc">&#39;@&#39;</span><span class="o">%</span><span class="err">&#39;</span><span class="p">;</span>
+</pre></div>
+
+
+<h1 id="3-docker">3. 安装 docker</h1>
+<p>外网，yum 确认联通，以下命令安装最新的社区版</p>
+<div class="hlcode"><pre><span class="n">curl</span> <span class="o">-</span><span class="n">sSL</span> <span class="n">https</span><span class="o">:</span><span class="c1">//get.docker.com/ | sh</span>
+</pre></div>
+
+
+<h1 id="4-docker-compose">4. docker-compose 编排</h1>
+<div class="hlcode"><pre><span class="n">mkdir</span> <span class="n">gitlab</span>
+<span class="n">cd</span> <span class="n">gitlab</span>
+<span class="n">vi</span> <span class="n">docker</span><span class="o">-</span><span class="n">compose</span><span class="p">.</span><span class="n">yml</span>
+</pre></div>
+
+
+<div class="hlcode"><pre><span class="nl">version:</span> <span class="s">&quot;3&quot;</span>
+<span class="nl">services:</span>
+  <span class="nl">gitlab:</span>
+    <span class="nl">image:</span> <span class="n">sameersbn</span><span class="o">/</span><span class="n">gitlab</span>
+    <span class="nl">ports:</span>
+      <span class="o">-</span> <span class="s">&quot;2222:2222&quot;</span>
+      <span class="o">-</span> <span class="s">&quot;80:80&quot;</span>
+    <span class="nl">depends_on:</span>
+      <span class="o">-</span> <span class="n">redis</span>
+    <span class="nl">environment:</span>
+      <span class="o">-</span> <span class="n">DEBUG</span><span class="o">=</span><span class="nb">false</span>
+
+      <span class="o">-</span> <span class="n">DB_ADAPTER</span><span class="o">=</span><span class="n">mysql2</span>
+      <span class="o">-</span> <span class="n">DB_HOST</span><span class="o">=</span><span class="mf">192.168.240.28</span>
+      <span class="o">-</span> <span class="n">DB_USER</span><span class="o">=</span><span class="n">gitlab</span>
+      <span class="o">-</span> <span class="n">DB_PASS</span><span class="o">=</span><span class="n">password</span>
+      <span class="o">-</span> <span class="n">DB_NAME</span><span class="o">=</span><span class="n">gitlabhq_production</span>
+
+      <span class="o">-</span> <span class="n">REDIS_HOST</span><span class="o">=</span><span class="n">redis</span>
+      <span class="o">-</span> <span class="n">REDIS_PORT</span><span class="o">=</span><span class="mi">6379</span>
+
+      <span class="o">-</span> <span class="n">GITLAB_HOST</span><span class="o">=</span><span class="mf">192.168.240.28</span>
+      <span class="o">-</span> <span class="n">GITLAB_PORT</span><span class="o">=</span><span class="mi">80</span>
+      <span class="o">-</span> <span class="n">GITLAB_SSH_PORT</span><span class="o">=</span><span class="mi">2222</span>
+      <span class="o">-</span> <span class="n">GITLAB_SECRETS_DB_KEY_BASE</span><span class="o">=</span><span class="kt">long</span><span class="o">-</span><span class="n">and</span><span class="o">-</span><span class="n">random</span><span class="o">-</span><span class="n">alpha</span><span class="o">-</span><span class="n">numeric</span><span class="o">-</span><span class="n">string</span>
+      <span class="o">-</span> <span class="n">GITLAB_SECRETS_SECRET_KEY_BASE</span><span class="o">=</span><span class="kt">long</span><span class="o">-</span><span class="n">and</span><span class="o">-</span><span class="n">random</span><span class="o">-</span><span class="n">alphanumeric</span><span class="o">-</span><span class="n">string</span>
+      <span class="o">-</span> <span class="n">GITLAB_SECRETS_OTP_KEY_BASE</span><span class="o">=</span><span class="kt">long</span><span class="o">-</span><span class="n">and</span><span class="o">-</span><span class="n">random</span><span class="o">-</span><span class="n">alphanumeric</span><span class="o">-</span><span class="n">string</span>
+
+    <span class="nl">restart:</span> <span class="n">always</span>
+
+  <span class="nl">redis:</span>
+    <span class="nl">image:</span> <span class="n">sameersbn</span><span class="o">/</span><span class="n">redis</span>
+    <span class="nl">restart:</span> <span class="n">always</span>
+</pre></div>
+
+
+<p>启动</p>
+<div class="hlcode"><pre><span class="n">docker</span><span class="o">-</span><span class="n">compose</span> <span class="n">up</span> <span class="o">-</span><span class="n">d</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <div class="footer-left">
+        <p>
+        Copyright © 2017 Lostsummer.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://git.coding.net/tankywoo/yasimple_x2.git" target="_blank">YASimple_X2</a>.
+        </p>
+      </div> <!-- end footer-left -->
+      <div class="footer-right">
+        <p>Site Generated 2017-05-31 16:45:57</p>
+      </div> <!-- end footer-right -->
+    </div>
+
+    
+    
+  </body>
+</html>

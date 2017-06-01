@@ -21,11 +21,16 @@ CREATE DATABASE IF NOT EXISTS `gitlabhq_production` DEFAULT CHARACTER SET `utf8`
 GRANT ALL PRIVILEGES ON `gitlabhq_production`.* TO 'gitlab'@'%';
 ```
 
-# 3. 安装 docker
+# 3. 安装 docker, docker-compose
 
 外网，yum 确认联通，以下命令安装最新的社区版
 ```
 curl -sSL https://get.docker.com/ | sh
+```
+
+通过 pip 安装 docker 编排工具 docker-compose
+```
+pip install -U docker-compose
 ```
 
 # 4. docker-compose 编排

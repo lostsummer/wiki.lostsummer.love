@@ -54,10 +54,10 @@
 </ul>
 </div>
 <h1 id="influxdb-relay">InfluxDB Relay</h1>
-<p>为 InfluxDB 提供基本的高可用层
+<p>为 InfluxDB 提供基本的高可用层<br />
 依赖 go 1.5++</p>
 <h2 id="_1">原理</h2>
-<p>只负责 write 的高可用，write 时根据配置的每个节点都要写一次，相当于多写
+<p>只负责 write 的高可用，write 时根据配置的每个节点都要写一次，相当于多写<br />
 read 需要其他工具做 Load Balance</p>
 <h2 id="_2">安装</h2>
 <p>从源码编译运行</p>
@@ -152,7 +152,7 @@ read 需要其他工具做 Load Balance</p>
 
 
 <h2 id="_5">缓冲</h2>
-<p>relay 可以通过配置为 HTTP 后端缓冲错误请求
+<p>relay 可以通过配置为 HTTP 后端缓冲错误请求<br />
 这个设计逻辑是为了减少在网络中断或周期性的网络问题发生时请求错误的数量</p>
 <blockquote>
 <p>这个重试逻辑并 <strong>不</strong> 适合长时间中断的情况，因为所有数据都保存在内存中</p>
@@ -161,12 +161,12 @@ read 需要其他工具做 Load Balance</p>
 <ul>
 <li>buffer-size-mb -- 端点数据保存在内存中的上限 (MB)</li>
 <li>max-batch-kb -- 要发送的聚合批数据的最大尺寸 (in KB)</li>
-<li>max-delay-interval -- 和每个后端每次重传的最大延迟.
+<li>max-delay-interval -- 和每个后端每次重传的最大延迟.<br />
     初始值为500ms，每次失败后翻倍</li>
 </ul>
-<p>如果缓冲满，会丢弃新的请求，并记录错误日志
+<p>如果缓冲满，会丢弃新的请求，并记录错误日志<br />
 进入缓冲的请求会不断重传直至写入成功</p>
-<p>重传数据会被序列化到单独的后端。需要补充的是，写数据会被聚合成批数据，尺寸在配置的最大值范围内尽可能大。
+<p>重传数据会被序列化到单独的后端。需要补充的是，写数据会被聚合成批数据，尺寸在配置的最大值范围内尽可能大。<br />
 如果缓冲的数据成功写入，后续的数据将无延迟尝试。</p>
 <p>如果一个后端 down 掉而 relay 数据还没有写入, 那么这些没被写入的 relay 数据会在线驻留在缓冲中，直到缓冲被刷掉，这意味着不需要运维余外干涉去恢复数据，数据会自己聚合成批，按照接收顺序写到恢复数据库中。</p>
 <p><em>NOTE</em>: The limits for buffering are not hard limits on the memory usage of the application, and there will be additional overhead that would be much more challenging to account for. The limits listed are just for the amount of point line protocol (including any added timestamps, if applicable). Factors such as small incoming batch sizes and a smaller max batch size will increase the overhead in the buffer. There is also the general application memory overhead to account for. This means that a machine with 2GB of memory should not have buffers that sum up to <em>almost</em> 2GB.</p>
@@ -220,7 +220,7 @@ read 需要其他工具做 Load Balance</p>
 
 <h2 id="_10">搭建集群</h2>
 <h3 id="_11">节点准备</h3>
-<p>node_relay 安装好
+<p>node_relay 安装好<br />
 node_a, node_b 按标准安装好</p>
 <div class="hlcode"><pre><span class="n">node_relay</span><span class="o">:</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">1.112</span>
 <span class="n">node_a</span><span class="o">:</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">1.12</span>
@@ -268,7 +268,7 @@ node_a, node_b 按标准安装好</p>
         </p>
       </div> <!-- end footer-left -->
       <div class="footer-right">
-        <p>Site Generated 2017-06-01 16:43:17</p>
+        <p>Site Generated 2017-07-28 19:42:25</p>
       </div> <!-- end footer-right -->
     </div>
 

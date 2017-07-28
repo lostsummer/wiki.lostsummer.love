@@ -137,7 +137,7 @@
 
 
 <h3 id="_6">审计操作组</h3>
-<p>每个审计操作组对应一种操作，在SQLSERVER2008里一共有35个操作组，包括备份和还原操作，数据库所有权的更改，从服务器和数据库角色中添加或删除登录用户
+<p>每个审计操作组对应一种操作，在SQLSERVER2008里一共有35个操作组，包括备份和还原操作，数据库所有权的更改，从服务器和数据库角色中添加或删除登录用户<br />
 添加审计操作组的只需在审计规范里使用ADD，下面语句添加了登录用户修改密码操作的操作组</p>
 <div class="hlcode"><pre><span class="n">ADD</span> <span class="p">(</span><span class="n">login_change_password_gourp</span><span class="p">)</span>
 </pre></div>
@@ -147,7 +147,7 @@
 <p>数据库审计规范存在于他们的数据库中，不能审计tempdb中的数据库操作</p>
 <p>CREATE DATABASE AUDIT SPECIFICATION和ALTER DATABASE AUDIT SPECIFICATION</p>
 <p>工作方式跟服务器审计规范一样</p>
-<p>在SQLSERVER2008里一共有15个数据库级别的操作组
+<p>在SQLSERVER2008里一共有15个数据库级别的操作组<br />
 7个数据库级别的审计操作是：select ,insert,update,delete,execute,receive,references</p>
 <p>相关脚本如下：</p>
 <div class="hlcode"><pre><span class="o">--</span><span class="err">创建审计对象</span>
@@ -170,11 +170,11 @@
 
 
 <p>我们先在D盘创建sqldbaudits文件夹</p>
-<p>第一个操作组对数据库中所有对象的DDL语句create，alter，drop等进行记录
-第二个语句监视由任何public用户（也就是所有用户）对dbo架构的任何对象所做的DML操作
+<p>第一个操作组对数据库中所有对象的DDL语句create，alter，drop等进行记录<br />
+第二个语句监视由任何public用户（也就是所有用户）对dbo架构的任何对象所做的DML操作<br />
 创建完毕之后可以在 SQL Server Management Studio 里看到相关的审计。</p>
 <h3 id="_8">查看审计事件</h3>
-<p>被记录到文件系统的审计文件不是存储在可以利用记事本打开的文本文件中，而是采用二进制文件的方式。
+<p>被记录到文件系统的审计文件不是存储在可以利用记事本打开的文本文件中，而是采用二进制文件的方式。<br />
 当磁盘空间不足的时候是可以直接删除这些SQLAUDIT文件。</p>
 <p>对于不需要归档审计数据的情况，我比较喜欢这种方式，当磁盘容量不够的时候把最老的那个审计文件删除掉</p>
 <p>当然，你可以把整个sqlaudits文件夹或某个sqlaudit文件进行备份，放到备份磁盘上，然后删除一些较老的sqlaudit文件</p>
@@ -427,7 +427,7 @@
         </p>
       </div> <!-- end footer-left -->
       <div class="footer-right">
-        <p>Site Generated 2017-06-01 16:43:17</p>
+        <p>Site Generated 2017-07-28 19:42:25</p>
       </div> <!-- end footer-right -->
     </div>
 

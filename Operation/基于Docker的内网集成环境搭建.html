@@ -1,0 +1,433 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>基于Docker的内网集成环境搭建 - Wiki of Lostsummer</title>
+    <meta name="keywords" content="c, python, go, docker, influxdb"/>
+    <meta name="description" content="My Personal wiki."/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Wiki of Lostsummer</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#Operation">Operation</a>
+    &nbsp;&#187;&nbsp;基于Docker的内网集成环境搭建
+    <span class="updated">Updated&nbsp;
+    2017-07-28 19:08
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#_1">部署计划</a><ul>
+<li><a href="#_2">主机及用途</a></li>
+<li><a href="#_3">部署程序</a><ul>
+<li><a href="#1-gitlab">1. GitLab 服务器</a></li>
+<li><a href="#2">2. 数据备份服务器</a></li>
+<li><a href="#3-ci-runner">3. CI Runner 服务器</a></li>
+<li><a href="#4-docker">4. Docker镜像仓库</a></li>
+</ul>
+</li>
+<li><a href="#_4">部署后工作</a></li>
+</ul>
+</li>
+<li><a href="#docker">Docker 安装</a><ul>
+<li><a href="#_5">删除旧版</a></li>
+<li><a href="#_6">通过线上脚本安装</a></li>
+<li><a href="#1">改变数据目录配置和存储驱动1</a></li>
+<li><a href="#firewalld">firewalld 开放端口</a></li>
+<li><a href="#docker_1">启动 Docker</a></li>
+</ul>
+</li>
+<li><a href="#docker-compose">Docker-compose 工具安装</a></li>
+<li><a href="#gitlab">GitLab 安装</a></li>
+<li><a href="#gitlab_1">GitLab 数据导入</a><ul>
+<li><a href="#_7">前提</a></li>
+<li><a href="#_8">导出</a></li>
+<li><a href="#_9">导入</a></li>
+</ul>
+</li>
+<li><a href="#docker-registry">Docker Registry 安装</a><ul>
+<li><a href="#firewalld_1">firewalld 开放端口</a></li>
+<li><a href="#git-clone-2">git clone 脚本2</a></li>
+<li><a href="#pull">运行（首次运行会pull镜像）</a></li>
+</ul>
+</li>
+<li><a href="#docker-registry_1">Docker Registry客户配置和测试</a></li>
+</ul>
+</div>
+<h1 id="_1">部署计划</h1>
+<h2 id="_2">主机及用途</h2>
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>IP</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>192.168.42.73</td>
+<td>GitLab服务器</td>
+</tr>
+<tr>
+<td>2</td>
+<td>192.168.42.74</td>
+<td>数据备份（GitLab 及 Docker Registry）</td>
+</tr>
+<tr>
+<td>3</td>
+<td>192.168.42.75</td>
+<td>CI Runner服务器</td>
+</tr>
+<tr>
+<td>4</td>
+<td>192.168.42.76</td>
+<td>Docker镜像仓库</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_3">部署程序</h2>
+<h3 id="1-gitlab">1. GitLab 服务器</h3>
+<table>
+<thead>
+<tr>
+<th>顺序编号</th>
+<th>安装程序</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>MySql</td>
+<td>已装</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Docker</td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Git</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>docker-compose 工具</td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Gitlab, Redis 容器 （docker-compose编排）</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="2">2. 数据备份服务器</h3>
+<table>
+<thead>
+<tr>
+<th>顺序编号</th>
+<th>安装程序</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>MySql</td>
+<td>已装</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Docker</td>
+<td>备用</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Git</td>
+<td>备用</td>
+</tr>
+</tbody>
+</table>
+<h3 id="3-ci-runner">3. CI Runner 服务器</h3>
+<table>
+<thead>
+<tr>
+<th>顺序编号</th>
+<th>安装程序</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Docker</td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Git</td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td>CI Runner 容器</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="4-docker">4. Docker镜像仓库</h3>
+<table>
+<thead>
+<tr>
+<th>顺序编号</th>
+<th>安装程序</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Docker</td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Git</td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td>docker-compose 工具</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Docker Registry 容器</td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>openssl, openssl-devel</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="_4">部署后工作</h2>
+<ol>
+<li>从测试gitlab服务器192.168.240.28导入所有repo和用户数据</li>
+<li>完成gitlab和registry数据定时备份脚本并启动任务</li>
+</ol>
+<h1 id="docker">Docker 安装</h1>
+<p>1-4四台服务器部署方式及目录相同，都需要将数据配置到 /data 以下。</p>
+<h2 id="_5">删除旧版</h2>
+<p>避免冲突，删除系统已安装的旧版。</p>
+<p>命令</p>
+<div class="hlcode"><pre><span class="n">yum</span> <span class="n">remove</span> <span class="n">docker</span> \
+                  <span class="n">docker</span><span class="o">-</span><span class="n">common</span> \
+                  <span class="n">docker</span><span class="o">-</span><span class="n">selinux</span> \
+                  <span class="n">docker</span><span class="o">-</span><span class="n">engine</span>
+
+<span class="n">rm</span> <span class="o">-</span><span class="n">rf</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">docker</span>
+</pre></div>
+
+
+<h2 id="_6">通过线上脚本安装</h2>
+<p>前提：主机访问外网权限，已安装yum</p>
+<div class="hlcode"><pre><span class="n">curl</span> <span class="o">-</span><span class="n">sSL</span> <span class="n">https</span><span class="o">:</span><span class="c1">//get.docker.com/ | bash -x</span>
+</pre></div>
+
+
+<h2 id="1">改变数据目录配置和存储驱动<sup id="fnref:1"><a class="footnote-ref" href="#fn:1" rel="footnote">1</a></sup></h2>
+<div class="hlcode"><pre><span class="n">vi</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">docker</span><span class="o">/</span><span class="n">daemon</span><span class="p">.</span><span class="n">json</span>                      <span class="err">#</span> <span class="err">新文件</span>
+</pre></div>
+
+
+<div class="hlcode"><pre><span class="p">{</span>
+  <span class="nt">&quot;graph&quot;</span><span class="p">:</span> <span class="s2">&quot;/data/docker&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;storage-driver&quot;</span><span class="p">:</span> <span class="s2">&quot;devicemapper&quot;</span>              <span class="err">#</span> <span class="err">存储驱动类型</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<h2 id="firewalld">firewalld 开放端口</h2>
+<div class="hlcode"><pre><span class="n">firewall</span><span class="o">-</span><span class="n">cmd</span> <span class="o">--</span><span class="n">permanent</span> <span class="o">--</span><span class="n">zone</span><span class="o">=</span><span class="n">public</span> <span class="o">--</span><span class="n">add</span><span class="o">-</span><span class="n">interface</span><span class="o">=</span><span class="n">docker0</span>
+<span class="n">firewall</span><span class="o">-</span><span class="n">cmd</span> <span class="o">--</span><span class="n">permanent</span> <span class="o">--</span><span class="n">zone</span><span class="o">=</span><span class="n">public</span> <span class="o">--</span><span class="n">add</span><span class="o">-</span><span class="n">port</span><span class="o">=</span><span class="mi">2377</span><span class="o">/</span><span class="n">tcp</span>
+<span class="n">firewall</span><span class="o">-</span><span class="n">cmd</span> <span class="o">--</span><span class="n">permanent</span> <span class="o">--</span><span class="n">zone</span><span class="o">=</span><span class="n">public</span> <span class="o">--</span><span class="n">add</span><span class="o">-</span><span class="n">port</span><span class="o">=</span><span class="mi">7946</span><span class="o">/</span><span class="n">tcp</span>
+<span class="n">firewall</span><span class="o">-</span><span class="n">cmd</span> <span class="o">--</span><span class="n">permanent</span> <span class="o">--</span><span class="n">zone</span><span class="o">=</span><span class="n">public</span> <span class="o">--</span><span class="n">add</span><span class="o">-</span><span class="n">port</span><span class="o">=</span><span class="mi">7046</span><span class="o">/</span><span class="n">udp</span>
+<span class="n">firewall</span><span class="o">-</span><span class="n">cmd</span> <span class="o">--</span><span class="n">permanent</span> <span class="o">--</span><span class="n">zone</span><span class="o">=</span><span class="n">public</span> <span class="o">--</span><span class="n">add</span><span class="o">-</span><span class="n">port</span><span class="o">=</span><span class="mi">4789</span><span class="o">/</span><span class="n">tcp</span>
+<span class="n">firewall</span><span class="o">-</span><span class="n">cmd</span> <span class="o">--</span><span class="n">permanent</span> <span class="o">--</span><span class="n">zone</span><span class="o">=</span><span class="n">public</span> <span class="o">--</span><span class="n">add</span><span class="o">-</span><span class="n">port</span><span class="o">=</span><span class="mi">4789</span><span class="o">/</span><span class="n">udp</span>
+<span class="n">firewall</span><span class="o">-</span><span class="n">cmd</span> <span class="o">--</span><span class="n">reload</span>
+</pre></div>
+
+
+<blockquote>
+<p><strong>注意：</strong> 当 firewalld 启动或者重启的时候，将会从 iptables 中移除 DOCKER 的规则，从而影响了 Docker 的正常工作。<br />
+当你使用的是 Systemd 的时候， firewalld 会在 Docker 之前启动，但是如果你在 Docker 启动之后再启动 或者重启 firewalld ，你就需要重启 Docker 进程了。</p>
+</blockquote>
+<h2 id="docker_1">启动 Docker</h2>
+<div class="hlcode"><pre><span class="n">systemctl</span> <span class="n">start</span> <span class="n">docker</span>
+</pre></div>
+
+
+<p>验证</p>
+<div class="hlcode"><pre><span class="n">systemctl</span> <span class="n">status</span> <span class="n">docker</span>
+<span class="n">ls</span> <span class="o">-</span><span class="n">l</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">docker</span>
+</pre></div>
+
+
+<h1 id="docker-compose">Docker-compose 工具安装</h1>
+<p>在 1， 4 服务器上安装 docker-compose  工具</p>
+<div class="hlcode"><pre><span class="n">yum</span> <span class="n">install</span> <span class="n">python</span><span class="o">-</span><span class="n">pip</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">docker</span><span class="o">-</span><span class="n">compose</span>
+</pre></div>
+
+
+<h1 id="gitlab">GitLab 安装</h1>
+<p>数据库</p>
+<div class="hlcode"><pre><span class="n">CREATE</span> <span class="n">USER</span> <span class="err">&#39;</span><span class="n">gitlab</span><span class="sc">&#39;@&#39;</span><span class="o">%</span><span class="err">&#39;</span> <span class="n">IDENTIFIED</span> <span class="n">BY</span> <span class="err">&#39;</span><span class="n">password</span><span class="err">&#39;</span><span class="p">;</span>
+<span class="n">CREATE</span> <span class="n">DATABASE</span> <span class="n">IF</span> <span class="n">NOT</span> <span class="n">EXISTS</span> <span class="err">`</span><span class="n">gitlabhq_production</span><span class="err">`</span> <span class="n">DEFAULT</span> <span class="n">CHARACTER</span> <span class="n">SET</span> <span class="err">`</span><span class="n">utf8</span><span class="err">`</span> <span class="n">COLLATE</span> <span class="err">`</span><span class="n">utf8_unicode_ci</span><span class="err">`</span><span class="p">;</span>
+<span class="n">GRANT</span> <span class="n">ALL</span> <span class="n">PRIVILEGES</span> <span class="n">ON</span> <span class="err">`</span><span class="n">gitlabhq_production</span><span class="err">`</span><span class="p">.</span><span class="o">*</span> <span class="n">TO</span> <span class="err">&#39;</span><span class="n">gitlab</span><span class="sc">&#39;@&#39;</span><span class="o">%</span><span class="err">&#39;</span><span class="p">;</span>
+</pre></div>
+
+
+<p>docker</p>
+<div class="hlcode"><pre><span class="n">git</span> <span class="n">clone</span> <span class="n">ssh</span><span class="o">:</span><span class="c1">//git@192.168.240.28:2222/research/gitlab-docker-compose.git /data/gitlab</span>
+<span class="n">cd</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">gitlab</span>
+<span class="n">docker</span><span class="o">-</span><span class="n">compose</span> <span class="n">up</span> <span class="o">-</span><span class="n">d</span>
+</pre></div>
+
+
+<h1 id="gitlab_1">GitLab 数据导入</h1>
+<h2 id="_7">前提</h2>
+<p>数据导出方和导入方使用的容器中gitlab版本一致（借助镜像tag可以区分），否则不过校验。</p>
+<h2 id="_8">导出</h2>
+<div class="hlcode"><pre><span class="n">cd</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">gitlab</span>
+<span class="p">.</span><span class="o">/</span><span class="n">cr_full_bk</span><span class="p">.</span><span class="n">sh</span>
+</pre></div>
+
+
+<p>/data/gitlab/data/backups 下会生成一个tar文件，备用</p>
+<div class="hlcode"><pre><span class="n">cd</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">gitlab</span><span class="o">/</span><span class="n">data</span>
+<span class="n">tar</span> <span class="n">cvf</span> <span class="n">ssh</span><span class="p">.</span><span class="n">tar</span> <span class="n">ssh</span><span class="o">/</span> <span class="p">.</span><span class="n">ssh</span><span class="o">/</span>
+</pre></div>
+
+
+<p>得到文件 /data/gitlab/data/ssh.tar，备用</p>
+<h2 id="_9">导入</h2>
+<p>目标服务器</p>
+<div class="hlcode"><pre><span class="n">cd</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">gitlab</span><span class="o">/</span><span class="n">data</span>
+<span class="n">mv</span> <span class="n">ssh</span> <span class="n">ssh_bak</span>
+<span class="n">mv</span> <span class="p">.</span><span class="n">ssh</span> <span class="n">_ssh_bak</span>
+</pre></div>
+
+
+<p>"导出"步骤中得到的ssh.tar放到 /data/gitlab/data</p>
+<div class="hlcode"><pre><span class="n">tar</span> <span class="n">xvf</span> <span class="n">ssh</span><span class="p">.</span><span class="n">tar</span>
+<span class="n">rm</span> <span class="n">ssh</span><span class="p">.</span><span class="n">tar</span>
+</pre></div>
+
+
+<p>"导出"步骤中的到的/data/gitlab/data/backups/xxxxxx.tar 放到目标服务器的 /data/gitlab/data/backup/ 下，注意保持属主（如使用cp命令时加 -p）</p>
+<p>运行导入脚本</p>
+<div class="hlcode"><pre><span class="n">cd</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">gitlab</span>
+<span class="p">.</span><span class="o">/</span><span class="n">rst_full_bk</span><span class="p">.</span><span class="n">sh</span>
+</pre></div>
+
+
+<p>过程中需要你输入列出的tar文件名， 几个yes等，不详述。</p>
+<h1 id="docker-registry">Docker Registry 安装</h1>
+<p>在 4 服务器上安装 docker registry</p>
+<h2 id="firewalld_1">firewalld 开放端口</h2>
+<div class="hlcode"><pre><span class="n">firewall</span><span class="o">-</span><span class="n">cmd</span> <span class="o">--</span><span class="n">permanent</span> <span class="o">--</span><span class="n">zone</span><span class="o">=</span><span class="n">public</span> <span class="o">--</span><span class="n">add</span><span class="o">-</span><span class="n">port</span><span class="o">=</span><span class="mi">5000</span><span class="o">/</span><span class="n">tcp</span>
+<span class="n">firewall</span><span class="o">-</span><span class="n">cmd</span> <span class="o">--</span><span class="n">permanent</span> <span class="o">--</span><span class="n">zone</span><span class="o">=</span><span class="n">public</span> <span class="o">--</span><span class="n">add</span><span class="o">-</span><span class="n">port</span><span class="o">=</span><span class="mi">443</span><span class="o">/</span><span class="n">tcp</span>
+<span class="n">firewall</span><span class="o">-</span><span class="n">cmd</span> <span class="o">--</span><span class="n">permanent</span> <span class="o">--</span><span class="n">zone</span><span class="o">=</span><span class="n">public</span> <span class="o">--</span><span class="n">add</span><span class="o">-</span><span class="n">port</span><span class="o">=</span><span class="mi">80</span><span class="o">/</span><span class="n">tcp</span>
+<span class="n">firewall</span><span class="o">-</span><span class="n">cmd</span> <span class="o">--</span><span class="n">reload</span>
+</pre></div>
+
+
+<h2 id="git-clone-2">git clone 脚本<sup id="fnref:2"><a class="footnote-ref" href="#fn:2" rel="footnote">2</a></sup></h2>
+<div class="hlcode"><pre><span class="n">git</span> <span class="n">clone</span> <span class="n">ssh</span><span class="o">:</span><span class="c1">//git@192.168.240.28:2222/research/emregistry-docker-compose.git /data/emregistry</span>
+</pre></div>
+
+
+<h2 id="pull">运行（首次运行会pull镜像）</h2>
+<div class="hlcode"><pre><span class="n">cd</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">emregistr</span>
+<span class="n">docker</span><span class="o">-</span><span class="n">compose</span> <span class="n">up</span> <span class="o">-</span><span class="n">d</span>
+</pre></div>
+
+
+<h1 id="docker-registry_1">Docker Registry客户配置和测试</h1>
+<p>在 1-4 服务器上</p>
+<div class="hlcode"><pre><span class="n">vi</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">hosts</span>
+</pre></div>
+
+
+<p>添加</p>
+<div class="hlcode"><pre><span class="mf">192.168.42.76</span>   <span class="n">emregistry</span><span class="p">.</span><span class="n">com</span>
+</pre></div>
+
+
+<p>下载信任证书和添加脚本，并执行生效</p>
+<div class="hlcode"><pre><span class="n">git</span> <span class="n">clone</span> <span class="n">ssh</span><span class="o">:</span><span class="c1">//git@192.168.240.28:2222/research/emregistry-docker-compose.git /data/emregistry</span>
+<span class="n">cd</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">emregistry</span>
+<span class="p">.</span><span class="o">/</span><span class="n">add_trust_ca</span><span class="p">.</span><span class="n">sh</span>
+<span class="n">systemctl</span> <span class="n">restart</span> <span class="n">docker</span>
+</pre></div>
+
+
+<p>测试登录</p>
+<div class="hlcode"><pre><span class="n">docker</span> <span class="n">login</span> <span class="n">emregistry</span><span class="p">.</span><span class="n">com</span>
+<span class="nl">Username:</span> <span class="n">emoney</span>
+<span class="nl">Password:</span>
+<span class="n">Login</span> <span class="n">Succeeded</span>
+</pre></div>
+
+
+<div class="footnote">
+<hr />
+<ol>
+<li id="fn:1">
+<p>这一步是避免在centos7上默认配置安装最新的docker创建容器可能失败的问题，参见 https://stackoverflow.com/questions/42248571/cannt-run-or-build-docker-images-on-centos-7&#160;<a class="footnote-backref" href="#fnref:1" rev="footnote" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+<li id="fn:2">
+<p>从测试环境老gitlab&#160;<a class="footnote-backref" href="#fnref:2" rev="footnote" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <div class="footer-left">
+        <p>
+        Copyright © 2017 Lostsummer.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://git.coding.net/tankywoo/yasimple_x2.git" target="_blank">YASimple_X2</a>.
+        </p>
+      </div> <!-- end footer-left -->
+      <div class="footer-right">
+        <p>Site Generated 2017-07-28 19:42:25</p>
+      </div> <!-- end footer-right -->
+    </div>
+
+    
+    
+  </body>
+</html>

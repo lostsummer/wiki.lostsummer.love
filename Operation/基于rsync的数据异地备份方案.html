@@ -1,0 +1,244 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>基于rsync的数据异地备份方案 - Wiki of Lostsummer</title>
+    <meta name="keywords" content="c, python, go, docker, influxdb"/>
+    <meta name="description" content="My Personal wiki."/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Wiki of Lostsummer</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#Operation">Operation</a>
+    &nbsp;&#187;&nbsp;基于rsync的数据异地备份方案
+    <span class="updated">Updated&nbsp;
+    2017-07-31 16:18
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <h1 id="rsync">基于 rsync 的数据异地备份方案</h1>
+<div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#rsync">基于 rsync 的数据异地备份方案</a><ul>
+<li><a href="#_1">备份方案总揽</a><ul>
+<li><a href="#0">0. 说明</a></li>
+<li><a href="#1">1. 涉及服务器</a></li>
+<li><a href="#2">2. 数据流向</a></li>
+</ul>
+</li>
+<li><a href="#rsync_1">配置 rsync 服务</a></li>
+<li><a href="#rsyncd">开启 rsyncd 服务</a></li>
+<li><a href="#rsync_2">rsync客户端同步命令</a></li>
+<li><a href="#_2">脚本化同步&amp;归档命令</a><ul>
+<li><a href="#1-gitlab">1. GitLab</a></li>
+<li><a href="#2-registry">2. Registry</a></li>
+<li><a href="#3-backup">3. Backup 服务器归档脚本</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<h2 id="_1">备份方案总揽</h2>
+<h3 id="0">0. 说明</h3>
+<p>本方案备份数据包含gitlab 和 registry 指定的数据卷全部数据</p>
+<p>gitlab的mysql数据不在方案内，备份服务器已经安装了mysql，作为gitlab服务器上mysql的slave在运行。但容器本身每周日生成一份全备文件，在数据卷/backups目录下（/data/gitlab/data/backups），也包含了全部gitlab在mysql上的数据。</p>
+<h3 id="1">1. 涉及服务器</h3>
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>名称</th>
+<th>IP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>GitLab</td>
+<td>192.168.42.73</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Registry</td>
+<td>192.168.42.76</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Backup</td>
+<td>192.168.42.74</td>
+</tr>
+</tbody>
+</table>
+<h3 id="2">2. 数据流向</h3>
+<p>概览</p>
+<p><img alt="" src="http://ooyi4zkat.bkt.clouddn.com/内网gitlab和registry备份.png" /></p>
+<p>rsync 推送目录</p>
+<table>
+<thead>
+<tr>
+<th>源</th>
+<th>目的</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GitLab:/data/gitlab</td>
+<td>Backup:/data/backup/gitlab</td>
+</tr>
+<tr>
+<td>Registry:/data/emregistry</td>
+<td>Backup:/data/backup/emregistry</td>
+</tr>
+</tbody>
+</table>
+<p>备份服务器Backup归档路径</p>
+<table>
+<thead>
+<tr>
+<th>源</th>
+<th>目的</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>/data/backup/gitlab</td>
+<td>/data/backup/archive/gitlab_xxxx-xx-xx.tgz</td>
+</tr>
+<tr>
+<td>/data/backup/emregistry</td>
+<td>/data/backup/archive/emregistry_xxxx-xx-xx.tgz</td>
+</tr>
+</tbody>
+</table>
+<h2 id="rsync_1">配置 rsync 服务</h2>
+<p>Backup 服务器上</p>
+<ul>
+<li>服务配置文件：/etc/rysncd.conf</li>
+</ul>
+<div class="hlcode"><pre><span class="n">motd</span> <span class="n">file</span> <span class="o">=</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">rsyncd</span><span class="p">.</span><span class="n">motd</span>
+<span class="n">transfer</span> <span class="n">logging</span> <span class="o">=</span> <span class="n">yes</span>
+<span class="n">log</span> <span class="n">file</span> <span class="o">=</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">log</span><span class="o">/</span><span class="n">rsyncd</span><span class="p">.</span><span class="n">log</span>
+<span class="n">pid</span> <span class="n">file</span> <span class="o">=</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">run</span><span class="o">/</span><span class="n">rsyncd</span><span class="p">.</span><span class="n">pid</span>
+<span class="n">lock</span> <span class="n">file</span> <span class="o">=</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">run</span><span class="o">/</span><span class="n">rsync</span><span class="p">.</span><span class="n">lock</span>
+<span class="n">port</span> <span class="o">=</span> <span class="mi">873</span>
+<span class="n">address</span> <span class="o">=</span> <span class="mf">192.168.42.74</span>
+<span class="n">uid</span> <span class="o">=</span> <span class="n">root</span>
+<span class="n">gid</span> <span class="o">=</span> <span class="n">root</span>
+<span class="n">read</span> <span class="n">only</span> <span class="o">=</span> <span class="n">no</span>
+<span class="n">write</span> <span class="n">only</span> <span class="o">=</span> <span class="n">yes</span>
+<span class="n">use</span> <span class="n">chroot</span> <span class="o">=</span> <span class="n">no</span>
+<span class="n">max</span> <span class="n">connections</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="p">[</span><span class="n">gitlab</span><span class="p">]</span>
+<span class="n">comment</span> <span class="o">=</span> <span class="n">gitlab</span> <span class="n">data</span>
+<span class="n">path</span> <span class="o">=</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">backup</span><span class="o">/</span><span class="n">gitlab</span>
+<span class="n">auth</span> <span class="n">users</span> <span class="o">=</span> <span class="n">gitlab</span>
+<span class="n">secrets</span> <span class="n">file</span> <span class="o">=</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">rsyncd</span><span class="p">.</span><span class="n">secrets</span>
+<span class="n">hosts</span> <span class="n">allow</span> <span class="o">=</span> <span class="mf">192.168.42.73</span>
+<span class="n">hosts</span> <span class="n">deny</span> <span class="o">=</span> <span class="o">*</span>
+<span class="p">[</span><span class="n">emregistry</span><span class="p">]</span>
+<span class="n">comment</span> <span class="o">=</span> <span class="n">emregistry</span> <span class="n">data</span>
+<span class="n">path</span> <span class="o">=</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">backup</span><span class="o">/</span><span class="n">emregistry</span>
+<span class="n">auth</span> <span class="n">users</span> <span class="o">=</span> <span class="n">emregistry</span>
+<span class="n">secrets</span> <span class="n">file</span> <span class="o">=</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">rsyncd</span><span class="p">.</span><span class="n">secrets</span>
+<span class="n">hosts</span> <span class="n">allow</span> <span class="o">=</span> <span class="mf">192.168.42.76</span>
+<span class="n">hosts</span> <span class="n">deny</span> <span class="o">=</span> <span class="o">*</span>
+</pre></div>
+
+
+<ul>
+<li>motd 文件：/etc/rsyncd.motd</li>
+</ul>
+<p>该文件为登录rsync服务器时的欢迎提示文本，自行根据需要配置</p>
+<ul>
+<li>用户口令文件：/etc/rsyncd.secrets</li>
+</ul>
+<p><code>gitlab:xxxxxx
+  emregsitry:xxxxxx</code></p>
+<h2 id="rsyncd">开启 rsyncd 服务</h2>
+<p>Backup 服务器上</p>
+<div class="hlcode"><pre><span class="n">systemctl</span> <span class="n">start</span> <span class="n">rsyncd</span>
+</pre></div>
+
+
+<h2 id="rsync_2">rsync客户端同步命令</h2>
+<p>在 GitLab 和 Registry 上</p>
+<p>首先为了方便脚本化，避免交互式输入密码，需要</p>
+<div class="hlcode"><pre><span class="n">echo</span> <span class="err">&#39;</span><span class="n">xxxxxx</span><span class="err">&#39;</span> <span class="o">&gt;</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">rsync</span><span class="p">.</span><span class="n">pas</span>
+<span class="n">chmod</span> <span class="mi">600</span> <span class="n">rsync</span><span class="p">.</span><span class="n">pas</span>
+</pre></div>
+
+
+<ul>
+<li>GitLab 上同步推数据的命令</li>
+</ul>
+<p><code>rsync --password-file=/data/rsync.pas -avzP /data/gitlab/ gitlab@192.168.42.74::gitlab</code></p>
+<ul>
+<li>Registry 上同步推数据的命令</li>
+</ul>
+<p><code>rsync --password-file=/data/rsync.pas -avzP /data/emregistry/ emregistry@192.168.42.74::emregistry</code></p>
+<p>​</p>
+<h2 id="_2">脚本化同步&amp;归档命令</h2>
+<h3 id="1-gitlab">1. GitLab</h3>
+<p>同步推数据脚本 /data/rsync_push.sh，内容见上一节“rsync客户端同步命令”</p>
+<p>定时任务，每周二~周六 0 点执行</p>
+<div class="hlcode"><pre><span class="n">crontab</span> <span class="o">-</span><span class="n">e</span>
+ <span class="mi">0</span> <span class="mi">0</span> <span class="o">*</span> <span class="o">*</span> <span class="mi">2</span><span class="o">-</span><span class="mi">6</span> <span class="n">sh</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">rsync_push</span><span class="p">.</span><span class="n">sh</span>
+</pre></div>
+
+
+<h3 id="2-registry">2. Registry</h3>
+<p>同 1.</p>
+<h3 id="3-backup">3. Backup 服务器归档脚本</h3>
+<p>/data/backup/mk_tgz.sh</p>
+<div class="hlcode"><pre><span class="c">#!/bin/bash</span>
+
+<span class="nv">DIR</span><span class="o">=</span>/data/backup/archive/
+
+tar cvzf <span class="nv">$DIR</span>/gitlab_<span class="k">$(</span>date +%Y-%m-%d<span class="k">)</span>.tgz gitlab/
+tar cvzf <span class="nv">$DIR</span>/emregistry_<span class="k">$(</span>date +%Y-%m-%d<span class="k">)</span>.tgz emregistry/
+
+<span class="c"># delete old more than 10 days ago tgz files when size &gt; 500G</span>
+<span class="k">if</span> <span class="o">[</span> <span class="k">$(</span>du -sm <span class="nv">$DIR</span> |cut -f1<span class="k">)</span> -gt 500000 <span class="o">]</span>
+<span class="k">then</span>
+<span class="k">        </span>find /data/backup/archive -name <span class="s2">&quot;*.tgz&quot;</span> -mtime +10 | xargs rm -f
+<span class="k">fi</span>
+</pre></div>
+
+
+<p>定时任务，每周二~周六1点执行</p>
+<div class="hlcode"><pre><span class="n">crontab</span> <span class="o">-</span><span class="n">e</span>
+ <span class="mi">0</span> <span class="mo">01</span> <span class="o">*</span> <span class="o">*</span> <span class="mi">2</span><span class="o">-</span><span class="mi">6</span> <span class="n">sh</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">backup</span><span class="o">/</span><span class="n">mk_tgz</span><span class="p">.</span><span class="n">sh</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <div class="footer-left">
+        <p>
+        Copyright © 2017 Lostsummer.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://git.coding.net/tankywoo/yasimple_x2.git" target="_blank">YASimple_X2</a>.
+        </p>
+      </div> <!-- end footer-left -->
+      <div class="footer-right">
+        <p>Site Generated 2017-07-31 16:22:30</p>
+      </div> <!-- end footer-right -->
+    </div>
+
+    
+    
+  </body>
+</html>

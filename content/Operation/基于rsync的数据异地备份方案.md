@@ -91,6 +91,8 @@ hosts deny = *
 
   ```
   gitlab:xxxxxx
+  ```
+  ```
   emregsitry:xxxxxx
   ```
 

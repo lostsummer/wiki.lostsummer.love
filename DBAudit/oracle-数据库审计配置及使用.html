@@ -42,16 +42,16 @@
 <p>管理员权限登录查看</p>
 <p>sqlplus / as sysdba</p>
 <p>和审计相关的几个参数</p>
-<p>SQL&gt;show parameter audit<br />
-    audit_file_dest<br />
-    audit_sys_operations<br />
+<p>SQL&gt;show parameter audit
+    audit_file_dest
+    audit_sys_operations
     audit_trail</p>
-<p><strong>audit_sys_operations</strong>：  <br />
+<p><strong>audit_sys_operations</strong>：  
 默认为false，当设置为true时，所有sys用户（包括以sysdba,sysoper身份登录的用户）的操作都会被记录，audit trail不会写在 aud\$ 表中，这个很好理解，如果数据库还未启动  aud\$ 不可用，那么像conn /as sysdba这样的连接信息，只能记录在其它地方。如果是windows平台，audti trail会记录在windows的事件管理中，如果是linux/unix平台则会记录在audit_file_dest参数指定的文件中。</p>
-<p><strong>audit_trail</strong>：  <br />
-None：是默认值，不做审计；<br />
-DB：将audit trail 记录在数据库的审计相关表中，如aud$，审计的结果只有连接信息；<br />
-DB,Extended：这样审计结果里面除了连接信息还包含了当时执行的具体语句；<br />
+<p><strong>audit_trail</strong>：  
+None：是默认值，不做审计；
+DB：将audit trail 记录在数据库的审计相关表中，如aud$，审计的结果只有连接信息；
+DB,Extended：这样审计结果里面除了连接信息还包含了当时执行的具体语句；
 OS：将audit trail 记录在操作系统文件中，文件名由audit_file_dest参数指定；</p>
 <p><strong>audit_file_dest</strong>：Audit_trail=OS时 文件位置</p>
 <p><strong>注</strong>：参数AUDIT_TRAIL不是动态的，为了使AUDIT_TRAIL参数中的改动生效，必须关闭数据库并重新启动。在对 SYS.AUD\$ 表进行审计时，应该注意监控该表的大小，以避免影响SYS表空间中其他对象的空间需求。推荐周期性归档 SYS.AUD\$ 中的行，并且截取该表。Oracle提供了角色 DELETE_CATALOG_ROLE，和批处理作业中的特殊账户一起使用，用于归档和截取审计表。</p>
@@ -61,13 +61,13 @@ OS：将audit trail 记录在操作系统文件中，文件名由audit_file_de
     <div id="footer">
       <div class="footer-left">
         <p>
-        Copyright © 2018 Lostsummer.
+        Copyright © 2019 Lostsummer.
         Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
         Theme by <a href="https://git.coding.net/tankywoo/yasimple_x2.git" target="_blank">YASimple_X2</a>.
         </p>
       </div> <!-- end footer-left -->
       <div class="footer-right">
-        <p>Site Generated 2018-03-15 17:43:45</p>
+        <p>Site Generated 2019-01-10 15:42:57</p>
       </div> <!-- end footer-right -->
     </div>
 

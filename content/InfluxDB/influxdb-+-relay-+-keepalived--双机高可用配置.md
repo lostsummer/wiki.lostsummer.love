@@ -35,7 +35,7 @@ date: 2017-05-12 16:05
 
 相比较上面官方给出的方案，取消了 LB，使用 Keepalived
 
-![myrelay](http://ooyi4zkat.bkt.clouddn.com/myrelay.png)
+![myrelay](http://img.lostsummer.love/wiki-img/myrelay.png)
 
 ## Relay 配置
 

@@ -17,7 +17,7 @@ date: 2018-03-15 17:41
 
 一个典型的Rancher高可用环境管理多容器集群
 
-![arch](http://ooyi4zkat.bkt.clouddn.com/racher-deploy-architec.png)
+![arch](http://img.lostsummer.love/wiki-img/racher-deploy-architec.png)
 
 ## 重要约束
 
@@ -29,7 +29,7 @@ date: 2018-03-15 17:41
 
   部署swarm集群的简单几步骤
 
-  ![step](http://ooyi4zkat.bkt.clouddn.com/rancher-deploy-swarm-step.png)
+  ![step](http://img.lostsummer.love/wiki-img/rancher-deploy-swarm-step.png)
 
   其中第2步中添加的主机是需要安装好支持版本的docker，并且互相开通必备端口访问。
 

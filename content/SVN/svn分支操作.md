@@ -72,4 +72,4 @@ date: 2017-04-25 17:10
 
 __当前版本情况__
 
-![](http://ooyi4zkat.bkt.clouddn.com/svn-branch.png)
+![](http://img.lostsummer.love/wiki-img/svn-branch.png)

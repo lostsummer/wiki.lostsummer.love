@@ -76,7 +76,7 @@ date: 2017-04-25 16:13
 
 * 基于日志的审计技术：该技术通常是通过数据库自身功能实现，Oracle、DB2等主流数据库，均具备自身审计功能，通过配置数据库的自审计功能，即可实现对数据库的审计，其典型部署示意图如图2所示：
 
-![](http://img.lostsummer.love/wiki-img/agent1.jpg)
+![](http://140.143.250.15/wiki-img/agent1.jpg)
 　
 
 
@@ -86,7 +86,7 @@ date: 2017-04-25 16:13
 * 基于代理的审计技术：该技术是通过在数据库系统上安装相应的审计Agent，在Agent上实现审计策略的配置和日志的采集，常见的产品如Oracle公司的Oracle Audit Vault、IBM公司的DB2 Audit Management Expert Tool以及第三方安全公司提供的产品，其典型部署示意图如图3所示：
 该技术与日志审计技术比较类似，最大的不同是需要在被审计主机上安装代理程序。代理审计技术从审计粒度上要优于日志审计技术，但是性能上的损耗是要大于日志审计技术，因为数据库系统厂商未公开细节，由数据库厂商提供的代理审计类产品对自有数据库系统的兼容性较好，但是在跨数据库系统的支持上，比如要同时审计Oracle和DB2时，存在一定的兼容性风险。同时由于在引入代理审计后，原数据库系统的稳定性、可靠性、性能或多或少都会有一些影响，实际的应用面较窄。
 
-![](http://img.lostsummer.love/wiki-img/agent2.jpg)
+![](http://140.143.250.15/wiki-img/agent2.jpg)
 
 
 ##数据库技术依赖分析
@@ -200,13 +200,13 @@ DDL触发器可以用于把DDL信息和SQL Server有关安全的事件日志记�
 
 点击xml查看所有事件日志：
 
-![](http://img.lostsummer.love/wiki-img/agent2-1.jpg)
+![](http://140.143.250.15/wiki-img/agent2-1.jpg)
 
 
 
 下图展示了选择查看日志表时展示的结果：
 
-![](http://img.lostsummer.love/wiki-img/agent2-2.jpg)
+![](http://140.143.250.15/wiki-img/agent2-2.jpg)
 
 
 
@@ -367,6 +367,6 @@ DDL触发器可以用于把DDL信息和SQL Server有关安全的事件日志记�
 
 要测试你的审计规范，你可以产生一些事件，然后查看审计文件，以确认这些事件已经被审计到了。请看下图：
 
-![](http://img.lostsummer.love/wiki-img/agent3.jpg)
+![](http://140.143.250.15/wiki-img/agent3.jpg)
 
 

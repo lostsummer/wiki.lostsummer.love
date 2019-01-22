@@ -29,7 +29,7 @@ gitlab的mysql数据不在方案内，备份服务器已经安装了mysql，作�
 
 概览
 
-![](http://img.lostsummer.love/wiki-img/内网gitlab和registry备份.png)
+![](http://140.143.250.15/wiki-img/内网gitlab和registry备份.png)
 
 rsync 推送目录
 

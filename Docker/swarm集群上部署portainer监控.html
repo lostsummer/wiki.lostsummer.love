@@ -47,9 +47,9 @@
 </div>
 <h1 id="_1">准备</h1>
 <h2 id="1">1. 配置好每个节点主机名</h2>
-<p>初装系统没有设置hostname的话，默认都是localhost.localdomain，
-无法辨识在centos7上最快捷的方法的是
-hostnamectl --static set-hostname HOSTNAME 
+<p>初装系统没有设置hostname的话，默认都是localhost.localdomain，<br />
+无法辨识在centos7上最快捷的方法的是<br />
+hostnamectl --static set-hostname HOSTNAME <br />
 假定四个节点主机名为 WG-DOCKER1, WG-DOCKER2, WG-DOCKER3, WG-DOCKER4</p>
 <h2 id="2-docker">2. 每个节点安装docker</h2>
 <p>略</p>
@@ -83,8 +83,8 @@ hostnamectl --static set-hostname HOSTNAME
 </pre></div>
 
 
-<p>注:
---constraint node.hostname==WG-DOCKER1 指定容器运行在管理节点WG-DOCKER1上.
+<p>注:<br />
+--constraint node.hostname==WG-DOCKER1 指定容器运行在管理节点WG-DOCKER1上.<br />
 --container-label com.docker.stack.namespace=portainer 是为了prometheus+grafana能通过stack标签查看监控数据，建议今后不以stack方式部署的服务都加上com.docker.stack.namespace标签。</p>
 <h2 id="2">2. 管理员首次登录</h2>
 <p>浏览器上访问 http://节点IP:9000/ 打开portainer面板，首次设置管理员密码</p>
@@ -102,7 +102,7 @@ hostnamectl --static set-hostname HOSTNAME
         </p>
       </div> <!-- end footer-left -->
       <div class="footer-right">
-        <p>Site Generated 2019-01-10 15:42:57</p>
+        <p>Site Generated 2019-01-22 16:48:43</p>
       </div> <!-- end footer-right -->
     </div>
 

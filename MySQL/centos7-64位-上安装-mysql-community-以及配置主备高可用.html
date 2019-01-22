@@ -155,7 +155,7 @@ rpm -ivh mysql-community-server-5.7.18-1.el7.x86_64.rpm                    <span
 </pre></div>
 
 
-<p>FLUSH TABLES WITH READ LOCK; 代表锁定表，禁止所有操作。防止bin log位置发生变化。
+<p>FLUSH TABLES WITH READ LOCK; 代表锁定表，禁止所有操作。防止bin log位置发生变化。<br />
 查看A主机bin log位置。</p>
 <div class="hlcode"><pre><span class="n">SHOW</span> <span class="n">MASTER</span> <span class="n">STATUS</span><span class="p">;</span>
 </pre></div>
@@ -179,7 +179,7 @@ rpm -ivh mysql-community-server-5.7.18-1.el7.x86_64.rpm                    <span
 </pre></div>
 
 
-<p>记录下A主机结果，和B主机结果
+<p>记录下A主机结果，和B主机结果<br />
 然后再解除两台主机mysql table的锁定</p>
 <div class="hlcode"><pre><span class="n">unlock</span> <span class="n">tables</span><span class="p">;</span>
 </pre></div>
@@ -292,7 +292,7 @@ rpm -ivh mysql-community-server-5.7.18-1.el7.x86_64.rpm                    <span
 </pre></div>
 
 
-<p>这两个变量常用来监控主从是否运行在半同步复制模式下。
+<p>这两个变量常用来监控主从是否运行在半同步复制模式下。<br />
 至此，MySQL半同步复制搭建完毕。</p>
   
 </div>
@@ -306,7 +306,7 @@ rpm -ivh mysql-community-server-5.7.18-1.el7.x86_64.rpm                    <span
         </p>
       </div> <!-- end footer-left -->
       <div class="footer-right">
-        <p>Site Generated 2019-01-10 15:42:57</p>
+        <p>Site Generated 2019-01-22 16:48:43</p>
       </div> <!-- end footer-right -->
     </div>
 
